@@ -125,7 +125,7 @@ export default function PostForm({
       return;
     }
 
-    window.location.href = `/posts`;
+    window.location.href = `/posts/${result.id}`;
   }
 
   const fieldClass = (name: string) =>
