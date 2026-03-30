@@ -162,7 +162,16 @@ export async function saveProperty(
   let propertyId = data.id
 
   if (data.id) {
+    const { data: roleRow } = await supabase
+      .from('user_roles').select('role').eq('user_id', user.id).single()
+    const isAdmin = roleRow?.role === 'admin'
+
     const { data: before } = await supabase.from('properties').select('*').eq('id', data.id).single()
+
+    if (!before) return { success: false, errors: { _: 'Property not found' } }
+    if (!isAdmin && before.created_by !== user.id)
+      return { success: false, errors: { _: 'Not authorized' } }
+
     const { error } = await supabase.from('properties').update(payload).eq('id', data.id)
     if (error) return { success: false, errors: { _: error.message } }
     const { data: after } = await supabase.from('properties').select('*').eq('id', data.id).single()

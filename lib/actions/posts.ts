@@ -116,11 +116,23 @@ export async function savePost(
   let postId = data.id;
 
   if (data.id) {
+    const { data: roleRow } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .single();
+    const isAdmin = roleRow?.role === "admin";
+
     const { data: before } = await supabase
       .from("posts")
       .select("*")
       .eq("id", data.id)
       .single();
+
+    if (!before) return { success: false, errors: { _: "Post not found" } };
+    if (!isAdmin && before.created_by !== user.id)
+      return { success: false, errors: { _: "Not authorized" } };
+
     const { error } = await supabase
       .from("posts")
       .update(payload)

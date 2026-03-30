@@ -23,8 +23,6 @@ export async function deleteProperty(propertyId: string) {
     p_is_admin: isAdmin,
   })
 
-  console.log('delete result:', { error, isAdmin, propertyId, userId: user.id })
-
   if (!error) {
     await supabase.from('audit_log').insert({
       table_name: 'properties',

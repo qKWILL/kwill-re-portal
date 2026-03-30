@@ -9,11 +9,18 @@ export async function updatePropertyStatus(propertyId: string, status: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  const { data: roleRow } = await supabase
+    .from('user_roles').select('role').eq('user_id', user.id).single()
+  const isAdmin = roleRow?.role === 'admin'
+
   const { data: before } = await supabase
     .from('properties')
     .select('*')
     .eq('id', propertyId)
     .single()
+
+  if (!before) return
+  if (!isAdmin && before.created_by !== user.id) return
 
   const { error } = await supabase
     .from('properties')

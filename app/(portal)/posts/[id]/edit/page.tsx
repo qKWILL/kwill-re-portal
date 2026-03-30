@@ -8,6 +8,13 @@ export default async function EditPostPage({ params }: { params: Promise<{ id: s
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  const { data: roleRow } = await supabase
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', user.id)
+    .single()
+  const isAdmin = roleRow?.role === 'admin'
+
   const { data: post } = await supabase
     .from('posts')
     .select('*')
@@ -16,6 +23,7 @@ export default async function EditPostPage({ params }: { params: Promise<{ id: s
     .single()
 
   if (!post) notFound()
+  if (!isAdmin && post.created_by !== user.id) redirect('/posts')
 
   const { data: teamMembers } = await supabase
     .from('team_members')

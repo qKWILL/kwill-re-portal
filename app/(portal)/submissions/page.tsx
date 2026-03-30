@@ -7,6 +7,13 @@ export default async function SubmissionsPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  const { data: roleRow } = await supabase
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', user.id)
+    .single()
+  if (roleRow?.role !== 'admin') redirect('/dashboard')
+
   const { data: submissions } = await supabase
     .from('form_submissions')
     .select('*')
