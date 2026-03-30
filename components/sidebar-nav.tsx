@@ -13,6 +13,7 @@ import {
   LogOut,
   Menu,
   X,
+  Map,
 } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 
@@ -22,6 +23,7 @@ const navItems = [
   { href: "/posts", label: "Posts", icon: FileText },
   { href: "/submissions", label: "Submissions", icon: Inbox },
   { href: "/team", label: "Team", icon: Users },
+  { href: "/map", label: "Map", icon: Map },
 ];
 
 export default function SidebarNav({

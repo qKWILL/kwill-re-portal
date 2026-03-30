@@ -49,6 +49,25 @@ function generateSlug(title: string) {
   return title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || `property-${Date.now()}`
 }
 
+async function geocodeAddress(address: string, city: string, state: string, zip: string): Promise<{ lat: number; lng: number } | null> {
+  try {
+    const query = encodeURIComponent(`${address}, ${city}, ${state} ${zip}`)
+    const res = await fetch(
+      `https://maps.googleapis.com/maps/api/geocode/json?address=${query}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY}`
+    )
+    const data = await res.json()
+    if (data.status === 'OK' && data.results[0]) {
+      return {
+        lat: data.results[0].geometry.location.lat,
+        lng: data.results[0].geometry.location.lng,
+      }
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
 export async function saveProperty(
   data: PropertyFormData,
   status: 'draft' | 'active'
@@ -84,7 +103,6 @@ export async function saveProperty(
     if (validAgents.length === 0) {
       errors.agents = 'At least one listing agent is required to publish'
     }
-
     if (!data.id) {
       errors.images = 'At least one image is required to publish'
     } else {
@@ -100,6 +118,14 @@ export async function saveProperty(
 
   if (Object.keys(errors).length > 0) return { success: false, errors }
 
+  // Geocode address if we have enough info
+  let lat: number | null = null
+  let lng: number | null = null
+  if (data.address && data.city && data.state) {
+    const coords = await geocodeAddress(data.address, data.city, data.state, data.zip)
+    if (coords) { lat = coords.lat; lng = coords.lng }
+  }
+
   const slug = generateSlug(data.title)
   const content = {
     property_type: data.property_type,
@@ -113,7 +139,7 @@ export async function saveProperty(
     highlights: data.highlights.filter(h => h.trim()),
   }
 
-  const payload = {
+  const payload: Record<string, any> = {
     title: data.title,
     summary: data.summary || null,
     description: data.description || null,
@@ -125,6 +151,12 @@ export async function saveProperty(
     content,
     status,
     slug,
+  }
+
+  // Only update lat/lng if we got coords — don't overwrite existing with null
+  if (lat !== null && lng !== null) {
+    payload.lat = lat
+    payload.lng = lng
   }
 
   let propertyId = data.id
