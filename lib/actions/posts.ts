@@ -234,6 +234,12 @@ export async function deletePost(postId: string) {
     .single();
   const isAdmin = roleRow?.role === "admin";
 
+  const { data: before } = await supabase
+    .from("posts")
+    .select("*")
+    .eq("id", postId)
+    .single();
+
   const { error } = await supabase.rpc("soft_delete_post", {
     p_post_id: postId,
     p_user_id: user.id,
@@ -245,7 +251,7 @@ export async function deletePost(postId: string) {
       table_name: "posts",
       record_id: postId,
       action: "delete",
-      before: null,
+      before,
       after: null,
       performed_by: user.id,
     });

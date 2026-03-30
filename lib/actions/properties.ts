@@ -53,7 +53,7 @@ async function geocodeAddress(address: string, city: string, state: string, zip:
   try {
     const query = encodeURIComponent(`${address}, ${city}, ${state} ${zip}`)
     const res = await fetch(
-      `https://maps.googleapis.com/maps/api/geocode/json?address=${query}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY}`
+      `https://maps.googleapis.com/maps/api/geocode/json?address=${query}&key=${process.env.GOOGLE_MAPS_KEY}`
     )
     const data = await res.json()
     if (data.status === 'OK' && data.results[0]) {

@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Pencil } from "lucide-react";
+import DOMPurify from "isomorphic-dompurify";
 import DeletePostButton from "./delete-post-button";
 import PostStatusButton from "./post-status-button";
 
@@ -140,7 +141,7 @@ export default async function PostDetailPage({
             <p className="text-xs font-medium text-gray-500 mb-2">Content</p>
             <div
               className="prose prose-sm max-w-none text-gray-800"
-              dangerouslySetInnerHTML={{ __html: post.content_html }}
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(post.content_html) }}
             />
           </div>
         )}
