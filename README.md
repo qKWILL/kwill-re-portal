@@ -1,36 +1,106 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# KWILL Merchant Advisors — CMS Portal
+
+Internal content management portal for KWILL Merchant Advisors. Built with Next.js 16 App Router and Supabase.
+
+## Stack
+
+- **Framework:** Next.js 16 (App Router)
+- **Database / Auth:** Supabase (Postgres + RLS)
+- **Styling:** Tailwind CSS v4
+- **Rich text:** Tiptap
+- **Maps:** Google Maps (`@vis.gl/react-google-maps`)
 
 ## Getting Started
 
-First, run the development server:
+### 1. Install dependencies
+
+```bash
+npm install
+```
+
+### 2. Set environment variables
+
+Copy `.env.example` to `.env.local` and fill in the values:
+
+```bash
+cp .env.example .env.local
+```
+
+| Variable | Description |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon/public key |
+| `NEXT_PUBLIC_GOOGLE_MAPS_KEY` | Google Maps API key (browser — map view) |
+| `GOOGLE_MAPS_KEY` | Google Maps API key (server-only — geocoding on property save) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (migration script only — never expose publicly) |
+
+> `GOOGLE_MAPS_KEY` and `NEXT_PUBLIC_GOOGLE_MAPS_KEY` can point to the same key. Keeping them separate means the geocoding key is never included in the browser bundle.
+
+### 3. Run the development server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Roles
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Role | Capabilities |
+|---|---|
+| `admin` | Full access — create, edit, publish, delete, view submissions |
+| `editor` | Create, edit, publish own content. Cannot delete. Cannot view submissions. Cannot edit other users' content. |
 
-## Learn More
+Roles are stored in the `user_roles` table and enforced both in server actions and via Supabase RLS policies.
 
-To learn more about Next.js, take a look at the following resources:
+## Scripts
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+One-time utility scripts live in the `scripts/` directory. They use `tsx` and connect directly to Supabase via the service role key.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### `scripts/migrate-news-posts.ts` — Legacy data migration
 
-## Deploy on Vercel
+Migrates rows from the legacy `news_posts` table into the new `posts` table.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+**Do not run this until:**
+- The portal is live and the `posts` schema is finalised
+- You have taken a manual database backup
+- You have completed the manual step below
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**Manual step required before running:**
+
+The script needs Franklin Eruo's `team_members.id` hardcoded at the top — there is no slug column in `team_members` to match programmatically. Find it with:
+
+```sql
+SELECT id, name FROM team_members WHERE name ILIKE '%franklin%';
+```
+
+Then open `scripts/migrate-news-posts.ts` and set:
+
+```ts
+const FRANKLIN_ID = 'paste-uuid-here'
+```
+
+**Also required:** `SUPABASE_SERVICE_ROLE_KEY` must be set in `.env.local`.
+
+**Run:**
+
+```bash
+npx tsx scripts/migrate-news-posts.ts
+```
+
+**Column mapping:**
+
+| `news_posts` | `posts` |
+|---|---|
+| `title` | `title` |
+| `excerpt` | `excerpt` |
+| `img_url` | `img_url` |
+| `type` | `type` |
+| `date` | `date` |
+| `link` | `external_url` |
+| `youtubeUrl` | `youtube_url` |
+| `author` (Franklin only) | `author_id` (hardcoded UUID) |
+
+Blog rows with a plain-text `content` field are wrapped in a Tiptap paragraph doc and written to `content_json` / `content_html`. All migrated rows are inserted with `status: 'published'` and `created_by: null` to distinguish them from portal-created posts.
+
+**After verifying results:** update the marketing site to read from `posts`. Keep `news_posts` as a read-only archive — do not drop it.
