@@ -43,7 +43,6 @@ export default async function DashboardPage() {
     .eq('user_id', user.id)
     .single()
   const role = roleRow?.role ?? 'editor'
-  const isAdmin = role === 'admin'
 
   const { data: meMember } = await supabase
     .from('team_members')
@@ -59,13 +58,11 @@ export default async function DashboardPage() {
     recentPropertiesData,
     recentPostsData,
   ] = await Promise.all([
-    isAdmin
-      ? supabase
-          .from('form_submissions')
-          .select('id, first_name, email, message, division, created_at')
-          .order('created_at', { ascending: false })
-          .limit(4)
-      : Promise.resolve({ data: [] as never[] }),
+    supabase
+      .from('form_submissions')
+      .select('id, first_name, email, message, division, submission_type, created_at')
+      .order('created_at', { ascending: false })
+      .limit(4),
     supabase
       .from('properties')
       .select('id, title, status, updated_at')
@@ -171,13 +168,8 @@ export default async function DashboardPage() {
       </div>
 
       {/* Inbox + Drafts */}
-      <div
-        className={`grid gap-6 mb-8 ${
-          isAdmin ? 'lg:grid-cols-2' : 'grid-cols-1'
-        }`}
-      >
-        {isAdmin && (
-          <section className="bg-white border border-neutral-200 rounded-lg overflow-hidden">
+      <div className="grid gap-6 mb-8 lg:grid-cols-2">
+        <section className="bg-white border border-neutral-200 rounded-lg overflow-hidden">
             <div className="flex items-center justify-between px-5 py-3 border-b border-neutral-100">
               <h2 className="text-sm font-semibold text-neutral-900">Inbox</h2>
               <Link
@@ -205,7 +197,11 @@ export default async function DashboardPage() {
                       </span>
                       <span className="flex-1 min-w-0 text-sm text-neutral-700 truncate">
                         <span className="text-neutral-900">
-                          {s.division ? `${s.division} inquiry` : 'New inquiry'}
+                          {s.submission_type === 'brochure_download'
+                            ? 'Brochure download'
+                            : s.division
+                              ? `${s.division} inquiry`
+                              : 'New inquiry'}
                         </span>
                         <span className="text-neutral-400"> — {s.message}</span>
                       </span>
@@ -218,7 +214,6 @@ export default async function DashboardPage() {
               </ul>
             )}
           </section>
-        )}
 
         <section className="bg-white border border-neutral-200 rounded-lg overflow-hidden">
           <div className="flex items-center justify-between px-5 py-3 border-b border-neutral-100">

@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
-import { Pencil, Map as MapIcon, ExternalLink } from 'lucide-react'
+import { Pencil, Map as MapIcon, ExternalLink, Download } from 'lucide-react'
 import DeleteButton from './delete-button'
 import StatusButtons from './status-buttons'
 import { getPropertyById } from '@/lib/cached-data'
@@ -17,6 +17,7 @@ import type {
   PropertyAgent,
   PropertySpace,
 } from '@/lib/types/property-portal'
+import { getPropertyBrochures } from '@/lib/types/property-portal'
 import { getBuildingSizeParts } from '@/lib/format-size'
 
 export default async function PropertyDetailPage({
@@ -42,6 +43,13 @@ export default async function PropertyDetailPage({
   const row = await getPropertyById(id)
 
   if (!row) notFound()
+
+  const { count: brochureDownloadCount } = await supabase
+    .from('form_submissions')
+    .select('id', { count: 'exact', head: true })
+    .eq('property_id', id)
+    .eq('submission_type', 'brochure_download')
+  const submissionCount = brochureDownloadCount ?? 0
 
   const isOwner = row.created_by === user.id
   const canChangeStatus = isAdmin || isOwner
@@ -155,6 +163,12 @@ export default async function PropertyDetailPage({
                 Featured
               </span>
             )}
+            <Link
+              href={`/submissions?property=${id}&tab=brochure_downloads`}
+              className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-neutral-900 text-white hover:bg-neutral-800 transition-colors"
+            >
+              {submissionCount} {submissionCount === 1 ? 'submission' : 'submissions'}
+            </Link>
           </div>
           <div className="flex items-center gap-2">
             <Link
@@ -236,29 +250,45 @@ export default async function PropertyDetailPage({
               </div>
             ) : null}
 
-            {/* Map / LoopNet buttons */}
-            {(property.lat && property.lng) || content.loopnet_url ? (
-              <div className="flex flex-row gap-2 my-10">
-                {property.lat && property.lng ? (
-                  <a
-                    href="#property-map"
-                    className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-full text-neutral-700 bg-neutral-100 hover:bg-neutral-200 transition-colors"
-                  >
-                    <MapIcon className="w-4 h-4" /> View Map
-                  </a>
-                ) : null}
-                {content.loopnet_url ? (
-                  <a
-                    href={content.loopnet_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-full text-neutral-700 bg-neutral-100 hover:bg-neutral-200 transition-colors"
-                  >
-                    <ExternalLink className="w-4 h-4" /> View on LoopNet
-                  </a>
-                ) : null}
-              </div>
-            ) : null}
+            {/* Brochure / Map / LoopNet buttons */}
+            {(() => {
+              const brochures = getPropertyBrochures(property.media)
+              const hasMap = property.lat && property.lng
+              const hasRow = brochures.length > 0 || hasMap || content.loopnet_url
+              if (!hasRow) return null
+              return (
+                <div className="flex flex-row flex-wrap gap-2 my-10">
+                  {brochures.length > 0 ? (
+                    <a
+                      href={brochures[0].url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-full text-white bg-neutral-900 hover:bg-neutral-800 transition-colors"
+                    >
+                      <Download className="w-4 h-4" /> Brochure
+                    </a>
+                  ) : null}
+                  {hasMap ? (
+                    <a
+                      href="#property-map"
+                      className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-full text-neutral-700 bg-neutral-100 hover:bg-neutral-200 transition-colors"
+                    >
+                      <MapIcon className="w-4 h-4" /> View Map
+                    </a>
+                  ) : null}
+                  {content.loopnet_url ? (
+                    <a
+                      href={content.loopnet_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-full text-neutral-700 bg-neutral-100 hover:bg-neutral-200 transition-colors"
+                    >
+                      <ExternalLink className="w-4 h-4" /> View on LoopNet
+                    </a>
+                  ) : null}
+                </div>
+              )
+            })()}
 
             {/* Highlights */}
             {content.highlights && content.highlights.length > 0 ? (

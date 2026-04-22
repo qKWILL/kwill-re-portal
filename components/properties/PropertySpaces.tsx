@@ -50,69 +50,89 @@ export function PropertySpaces({ spaces }: { spaces: PropertySpace[] }) {
       </div>
 
       <Accordion type="multiple">
-        {spaces.map((space) => (
-          <AccordionItem
-            key={space.id}
-            value={space.id}
-            className="border-b border-neutral-100"
-          >
-            <AccordionTrigger className="hover:bg-neutral-50 px-4 hover:no-underline">
-              {/* Desktop: 7-column grid */}
-              <div className="hidden md:grid md:grid-cols-7 gap-4 w-full text-sm text-neutral-700 text-left">
-                <span className="font-medium text-neutral-900">
-                  {space.name}
-                </span>
-                <span>{formatSize(space.size_sf)}</span>
-                <span>{space.term ?? '-'}</span>
-                <span>{space.rental_rate ?? '-'}</span>
-                <span>{space.space_use ?? '-'}</span>
-                <span>{space.build_out ?? '-'}</span>
-                <span>{space.available_date ?? '-'}</span>
+        {spaces.map((space) => {
+          const hasFeatures = space.features.length > 0
+
+          const desktopRow = (
+            <div className="hidden md:grid md:grid-cols-7 gap-4 w-full text-sm text-neutral-700 text-left">
+              <span className="font-medium text-neutral-900">{space.name}</span>
+              <span>{formatSize(space.size_sf)}</span>
+              <span>{space.term ?? '-'}</span>
+              <span>{space.rental_rate ?? '-'}</span>
+              <span>{space.space_use ?? '-'}</span>
+              <span>{space.build_out ?? '-'}</span>
+              <span>{space.available_date ?? '-'}</span>
+            </div>
+          )
+
+          const mobileSummary = (
+            <div className="flex flex-col gap-1 md:hidden text-left">
+              <span className="font-medium text-neutral-900 text-sm">
+                {space.name}
+              </span>
+              <span className="text-xs text-neutral-500">
+                {formatSize(space.size_sf)}
+                {space.rental_rate ? ` · ${space.rental_rate}` : ''}
+              </span>
+            </div>
+          )
+
+          const mobileDetails = (
+            <dl className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm md:hidden mb-4 px-4">
+              {space.term && (
+                <>
+                  <dt className="text-neutral-500">Term</dt>
+                  <dd className="text-neutral-700">{space.term}</dd>
+                </>
+              )}
+              {space.space_use && (
+                <>
+                  <dt className="text-neutral-500">Space Use</dt>
+                  <dd className="text-neutral-700">{space.space_use}</dd>
+                </>
+              )}
+              {space.build_out && (
+                <>
+                  <dt className="text-neutral-500">Build-Out</dt>
+                  <dd className="text-neutral-700">{space.build_out}</dd>
+                </>
+              )}
+              {space.available_date && (
+                <>
+                  <dt className="text-neutral-500">Available</dt>
+                  <dd className="text-neutral-700">{space.available_date}</dd>
+                </>
+              )}
+            </dl>
+          )
+
+          if (!hasFeatures) {
+            return (
+              <div
+                key={space.id}
+                className="border-b border-neutral-100 px-4 py-4"
+              >
+                {desktopRow}
+                {mobileSummary}
+                <div className="md:hidden pt-3">{mobileDetails}</div>
               </div>
+            )
+          }
 
-              {/* Mobile: stacked layout */}
-              <div className="flex flex-col gap-1 md:hidden text-left">
-                <span className="font-medium text-neutral-900 text-sm">
-                  {space.name}
-                </span>
-                <span className="text-xs text-neutral-500">
-                  {formatSize(space.size_sf)}
-                  {space.rental_rate ? ` \u00B7 ${space.rental_rate}` : ''}
-                </span>
-              </div>
-            </AccordionTrigger>
+          return (
+            <AccordionItem
+              key={space.id}
+              value={space.id}
+              className="border-b border-neutral-100"
+            >
+              <AccordionTrigger className="hover:bg-neutral-50 px-4 hover:no-underline">
+                {desktopRow}
+                {mobileSummary}
+              </AccordionTrigger>
 
-            <AccordionContent className="">
-              {/* Detail fields on mobile that aren't shown in trigger */}
-              <dl className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm md:hidden mb-4 px-4">
-                {space.term && (
-                  <>
-                    <dt className="text-neutral-500">Term</dt>
-                    <dd className="text-neutral-700">{space.term}</dd>
-                  </>
-                )}
-                {space.space_use && (
-                  <>
-                    <dt className="text-neutral-500">Space Use</dt>
-                    <dd className="text-neutral-700">{space.space_use}</dd>
-                  </>
-                )}
-                {space.build_out && (
-                  <>
-                    <dt className="text-neutral-500">Build-Out</dt>
-                    <dd className="text-neutral-700">{space.build_out}</dd>
-                  </>
-                )}
-                {space.available_date && (
-                  <>
-                    <dt className="text-neutral-500">Available</dt>
-                    <dd className="text-neutral-700">{space.available_date}</dd>
-                  </>
-                )}
-              </dl>
+              <AccordionContent className="">
+                {mobileDetails}
 
-              {/* Features list */}
-              {space.features.length > 0 && (
                 <div className="pt-2 pb-4 bg-neutral-50">
                   <p className="text-xs text-neutral-500 uppercase tracking-wider mb-2 pt-1 px-4">
                     Features
@@ -123,10 +143,10 @@ export function PropertySpaces({ spaces }: { spaces: PropertySpace[] }) {
                     ))}
                   </ul>
                 </div>
-              )}
-            </AccordionContent>
-          </AccordionItem>
-        ))}
+              </AccordionContent>
+            </AccordionItem>
+          )
+        })}
       </Accordion>
     </section>
   )
