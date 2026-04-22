@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -13,7 +14,6 @@ import {
   LogOut,
   Menu,
   X,
-  Map,
 } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 
@@ -21,9 +21,8 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/properties", label: "Properties", icon: Building2 },
   { href: "/posts", label: "Posts", icon: FileText },
-  { href: "/submissions", label: "Submissions", icon: Inbox },
   { href: "/team", label: "Team", icon: Users },
-  { href: "/map", label: "Map", icon: Map },
+  { href: "/submissions", label: "Submissions", icon: Inbox },
 ];
 
 export default function SidebarNav({
@@ -44,42 +43,46 @@ export default function SidebarNav({
     router.refresh();
   }
 
-  const NavLinks = () => (
-    <>
-      {navItems.map(({ href, label, icon: Icon }) => {
-        const active = pathname === href || pathname.startsWith(href + "/");
-        return (
-          <Link
-            key={href}
-            href={href}
-            onClick={() => setOpen(false)}
-            className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-              active
-                ? "bg-gray-900 text-white"
-                : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-            }`}
-          >
-            <Icon className="w-4 h-4" />
-            {label}
-          </Link>
-        );
-      })}
-    </>
-  );
+  const renderItems = (
+    items: { href: string; label: string; icon: typeof LayoutDashboard }[]
+  ) =>
+    items.map(({ href, label, icon: Icon }) => {
+      const active = pathname === href || pathname.startsWith(href + "/");
+      return (
+        <Link
+          key={href}
+          href={href}
+          onClick={() => setOpen(false)}
+          className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+            active
+              ? "bg-neutral-900 text-white"
+              : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900"
+          }`}
+        >
+          <Icon className="w-4 h-4" />
+          {label}
+        </Link>
+      );
+    });
 
   return (
     <>
       {/* Mobile top bar */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200 flex items-center justify-between px-4 h-14">
-        <div>
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-            KWILL
-          </p>
-          <p className="text-sm font-medium text-gray-900 -mt-0.5">Portal</p>
-        </div>
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-white border-b border-neutral-200 flex items-center px-4 h-16">
+        <div className="w-9 shrink-0" aria-hidden />
+        <Link href="/dashboard" className="flex-1 flex items-center justify-center">
+          <Image
+            src="/KWILL Logo_Horizontal.png"
+            alt="KWILL"
+            width={180}
+            height={48}
+            priority
+            className="h-10 w-auto"
+          />
+        </Link>
         <button
           onClick={() => setOpen(!open)}
-          className="p-2 rounded-md text-gray-600 hover:bg-gray-100"
+          className="p-2 rounded-md text-neutral-600 hover:bg-neutral-100 shrink-0"
         >
           {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
         </button>
@@ -92,22 +95,22 @@ export default function SidebarNav({
           onClick={() => setOpen(false)}
         >
           <div
-            className="absolute top-14 left-0 bottom-0 w-64 bg-white flex flex-col"
+            className="absolute top-16 left-0 bottom-0 w-64 bg-white flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             <nav className="flex-1 p-4 space-y-1">
-              <NavLinks />
+              {renderItems(navItems)}
             </nav>
-            <div className="p-4 border-t border-gray-200">
+            <div className="p-4 border-t border-neutral-200">
               <div className="px-3 py-2 mb-2">
-                <p className="text-xs font-medium text-gray-900 truncate">
+                <p className="text-xs font-medium text-neutral-900 truncate">
                   {user.email}
                 </p>
-                <p className="text-xs text-gray-400 capitalize">{role}</p>
+                <p className="text-xs text-neutral-400 capitalize">{role}</p>
               </div>
               <button
                 onClick={handleSignOut}
-                className="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 w-full transition-colors"
+                className="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 w-full transition-colors"
               >
                 <LogOut className="w-4 h-4" />
                 Sign Out
@@ -118,26 +121,32 @@ export default function SidebarNav({
       )}
 
       {/* Desktop sidebar */}
-      <aside className="hidden lg:flex w-56 min-h-screen bg-white border-r border-gray-200 flex-col">
-        <div className="p-6 border-b border-gray-200">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-            KWILL
-          </p>
-          <p className="text-sm font-medium text-gray-900 mt-1">Portal</p>
+      <aside className="hidden lg:flex w-64 h-screen sticky top-0 bg-white border-r border-neutral-200 flex-col">
+        <div className="p-6 border-b border-neutral-200 flex items-center justify-center">
+          <Link href="/dashboard" className="flex items-center justify-center w-full">
+            <Image
+              src="/KWILL Logo_Horizontal.png"
+              alt="KWILL"
+              width={200}
+              height={56}
+              priority
+              className="h-12 w-auto"
+            />
+          </Link>
         </div>
         <nav className="flex-1 p-4 space-y-1">
-          <NavLinks />
+          {renderItems(navItems)}
         </nav>
-        <div className="p-4 border-t border-gray-200">
+        <div className="p-4 border-t border-neutral-200">
           <div className="px-3 py-2 mb-2">
-            <p className="text-xs font-medium text-gray-900 truncate">
+            <p className="text-xs font-medium text-neutral-900 truncate">
               {user.email}
             </p>
-            <p className="text-xs text-gray-400 capitalize">{role}</p>
+            <p className="text-xs text-neutral-400 capitalize">{role}</p>
           </div>
           <button
             onClick={handleSignOut}
-            className="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 w-full transition-colors"
+            className="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 w-full transition-colors"
           >
             <LogOut className="w-4 h-4" />
             Sign Out

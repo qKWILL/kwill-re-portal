@@ -1,8 +1,9 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { TAGS } from '@/lib/cache-tags'
 
 export async function updatePropertyStatus(propertyId: string, status: string) {
   const supabase = await createClient()
@@ -64,5 +65,7 @@ export async function updatePropertyStatus(propertyId: string, status: string) {
     }
   }
 
+  revalidateTag(TAGS.properties, 'max')
+  revalidateTag(TAGS.property(propertyId), 'max')
   revalidatePath(`/properties/${propertyId}`)
 }

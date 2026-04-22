@@ -1,8 +1,9 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { TAGS } from '@/lib/cache-tags'
 
 export async function updatePostStatus(postId: string, status: string) {
   const supabase = await createClient()
@@ -51,5 +52,7 @@ export async function updatePostStatus(postId: string, status: string) {
     }).catch(() => {})
   }
 
+  revalidateTag(TAGS.posts, 'max')
+  revalidateTag(TAGS.post(postId), 'max')
   revalidatePath(`/posts/${postId}`)
 }

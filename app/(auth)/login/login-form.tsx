@@ -56,7 +56,7 @@ export default function LoginForm() {
 
   return (
     <div className="bg-white shadow rounded-lg p-8 space-y-5">
-      <div className="flex rounded-md border border-gray-200 p-1 gap-1">
+      <div className="flex rounded-md border border-neutral-200 p-1 gap-1">
         <button
           onClick={() => {
             setMode("password");
@@ -65,8 +65,8 @@ export default function LoginForm() {
           }}
           className={`flex-1 py-1.5 text-sm font-medium rounded transition-colors ${
             mode === "password"
-              ? "bg-gray-900 text-white"
-              : "text-gray-600 hover:bg-gray-100"
+              ? "bg-neutral-900 text-white"
+              : "text-neutral-600 hover:bg-neutral-100"
           }`}
         >
           Password
@@ -79,8 +79,8 @@ export default function LoginForm() {
           }}
           className={`flex-1 py-1.5 text-sm font-medium rounded transition-colors ${
             mode === "magic"
-              ? "bg-gray-900 text-white"
-              : "text-gray-600 hover:bg-gray-100"
+              ? "bg-neutral-900 text-white"
+              : "text-neutral-600 hover:bg-neutral-100"
           }`}
         >
           Magic Link
@@ -94,7 +94,7 @@ export default function LoginForm() {
         <div>
           <label
             htmlFor="email"
-            className="block text-sm font-medium text-gray-700 mb-1"
+            className="block text-sm font-medium text-neutral-700 mb-1"
           >
             Email
           </label>
@@ -104,7 +104,7 @@ export default function LoginForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+            className="w-full border border-neutral-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900"
           />
         </div>
 
@@ -112,7 +112,7 @@ export default function LoginForm() {
           <div>
             <label
               htmlFor="password"
-              className="block text-sm font-medium text-gray-700 mb-1"
+              className="block text-sm font-medium text-neutral-700 mb-1"
             >
               Password
             </label>
@@ -122,7 +122,7 @@ export default function LoginForm() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+              className="w-full border border-neutral-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900"
             />
           </div>
         )}

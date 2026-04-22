@@ -9,7 +9,8 @@ export default async function NewPropertyPage() {
 
   const { data: teamMembers } = await supabase
     .from('team_members')
-    .select('id, name, role')
+    .select('id, name, role, img_url')
+    .contains('tags', ['real estate'])
     .order('name')
 
   return (

@@ -2,7 +2,9 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { z } from 'zod'
+import { TAGS } from '@/lib/cache-tags'
 
 const draftSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -31,7 +33,8 @@ export type PropertyFormData = {
   featured: boolean
   property_type: string
   transaction_type: string
-  size_sf: string
+  size_sf_min: string
+  size_sf_max: string
   price: string
   lease_rate_sf: string
   year_built: string
@@ -39,11 +42,71 @@ export type PropertyFormData = {
   parking: string
   highlights: string[]
   agents: { team_member_id: string; role: string }[]
+  // Building facts
+  lot_size: string
+  building_class: string
+  stories: string
+  construction_type: string
+  sprinkler_system: string
+  year_renovated: string
+  typical_floor_size: string
+  ceiling_height: string
+  power_supply: string
+  heating: string
+  gas: string
+  water: string
+  sewer: string
+  // Industrial
+  clear_height: string
+  drive_in_bays: string
+  exterior_dock_doors: string
+  interior_dock_doors: string
+  column_spacing: string
+  // Other
+  features: { label: string; value: string }[]
+  overview: string
+  loopnet_url: string
+  spaces: {
+    id?: string
+    name: string
+    size_sf: string
+    term: string
+    rental_rate: string
+    space_use: string
+    build_out: string
+    available_date: string
+    features: string[]
+  }[]
 }
 
 export type SavePropertyResult =
   | { success: true; id: string }
   | { success: false; errors: Record<string, string> }
+
+async function persistSpaces(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  propertyId: string,
+  spaces: PropertyFormData['spaces'],
+) {
+  await supabase.from('property_spaces').delete().eq('property_id', propertyId)
+  const rows = spaces
+    .filter((s) => s.name.trim() || s.size_sf.trim() || s.rental_rate.trim())
+    .map((s, i) => ({
+      property_id: propertyId,
+      name: s.name,
+      size_sf: s.size_sf ? parseInt(s.size_sf, 10) : null,
+      term: s.term || null,
+      rental_rate: s.rental_rate || null,
+      space_use: s.space_use || null,
+      build_out: s.build_out || null,
+      available_date: s.available_date || null,
+      features: s.features.filter((f) => f.trim()),
+      display_order: i,
+    }))
+  if (rows.length > 0) {
+    await supabase.from('property_spaces').insert(rows)
+  }
+}
 
 function generateSlug(title: string) {
   return title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || `property-${Date.now()}`
@@ -70,14 +133,14 @@ async function geocodeAddress(address: string, city: string, state: string, zip:
 
 export async function saveProperty(
   data: PropertyFormData,
-  status: 'draft' | 'active'
+  status: 'draft' | 'active' | 'pending' | 'sold' | 'leased'
 ): Promise<SavePropertyResult> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
   // Run ALL validation together so all errors show at once
-  const schema = status === 'active' ? publishSchema : draftSchema
+  const schema = status === 'draft' ? draftSchema : publishSchema
   const parsed = schema.safeParse({
     title: data.title,
     summary: data.summary,
@@ -97,8 +160,8 @@ export async function saveProperty(
     })
   }
 
-  // For publish — also check images and agents at the same time
-  if (status === 'active') {
+  // For any non-draft save — also check images and agents at the same time
+  if (status !== 'draft') {
     const validAgents = data.agents.filter(a => a.team_member_id)
     if (validAgents.length === 0) {
       errors.agents = 'At least one listing agent is required to publish'
@@ -127,16 +190,44 @@ export async function saveProperty(
   }
 
   const slug = generateSlug(data.title)
+  const sizeMin = data.size_sf_min ? Number(data.size_sf_min) : null
+  const sizeMax = data.size_sf_max ? Number(data.size_sf_max) : null
   const content = {
     property_type: data.property_type,
     transaction_type: data.transaction_type,
-    size_sf: data.size_sf ? Number(data.size_sf) : null,
+    size_sf: sizeMax ?? sizeMin ?? null,
+    size_sf_min: sizeMin,
+    size_sf_max: sizeMax,
     price: data.price || null,
     lease_rate_sf: data.lease_rate_sf || null,
     year_built: data.year_built ? Number(data.year_built) : null,
     zoning: data.zoning || null,
     parking: data.parking || null,
     highlights: data.highlights.filter(h => h.trim()),
+    // Building facts
+    lot_size: data.lot_size || null,
+    building_class: data.building_class || null,
+    stories: data.stories ? parseInt(data.stories, 10) : null,
+    construction_type: data.construction_type || null,
+    sprinkler_system: data.sprinkler_system || null,
+    year_renovated: data.year_renovated ? parseInt(data.year_renovated, 10) : null,
+    typical_floor_size: data.typical_floor_size || null,
+    ceiling_height: data.ceiling_height || null,
+    power_supply: data.power_supply || null,
+    heating: data.heating || null,
+    gas: data.gas || null,
+    water: data.water || null,
+    sewer: data.sewer || null,
+    // Industrial
+    clear_height: data.clear_height || null,
+    drive_in_bays: data.drive_in_bays ? parseInt(data.drive_in_bays, 10) : null,
+    exterior_dock_doors: data.exterior_dock_doors ? parseInt(data.exterior_dock_doors, 10) : null,
+    interior_dock_doors: data.interior_dock_doors ? parseInt(data.interior_dock_doors, 10) : null,
+    column_spacing: data.column_spacing || null,
+    // Other
+    features: (data.features ?? []).filter(f => f.label.trim() || f.value.trim()),
+    overview: data.overview || null,
+    loopnet_url: data.loopnet_url || null,
   }
 
   const payload: Record<string, any> = {
@@ -186,6 +277,7 @@ export async function saveProperty(
         validAgents.map(a => ({ property_id: data.id, team_member_id: a.team_member_id, role: a.role }))
       )
     }
+    await persistSpaces(supabase, data.id, data.spaces ?? [])
   } else {
     const { data: newProp, error } = await supabase
       .from('properties')
@@ -204,6 +296,7 @@ export async function saveProperty(
         validAgents.map(a => ({ property_id: newProp.id, team_member_id: a.team_member_id, role: a.role }))
       )
     }
+    await persistSpaces(supabase, newProp.id, data.spaces ?? [])
   }
 
   // Fire webhook on publish
@@ -230,6 +323,10 @@ export async function saveProperty(
       }).catch(() => {})
     }
   }
+
+  revalidateTag(TAGS.properties, 'max')
+  if (propertyId) revalidateTag(TAGS.property(propertyId), 'max')
+  revalidatePath('/properties', 'layout')
 
   return { success: true, id: propertyId! }
 }

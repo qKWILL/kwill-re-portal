@@ -20,10 +20,14 @@ export default async function SubmissionsPage() {
     .order('created_at', { ascending: false })
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Form Submissions</h1>
-        <p className="text-sm text-gray-500 mt-1">{submissions?.length ?? 0} total</p>
+    <div className="max-w-[1200px] mx-auto px-6 pt-8 pb-16">
+      <div className="mb-6">
+        <h1 className="text-neutral-900 text-[clamp(2.2rem,0.15rem+8vw,3.125rem)] leading-[1.1] tracking-[-0.01em] font-serif font-normal">
+          Submissions
+        </h1>
+        <p className="text-sm text-neutral-500 mt-1">
+          {submissions?.length ?? 0} total
+        </p>
       </div>
       <SubmissionsClient submissions={submissions ?? []} />
     </div>

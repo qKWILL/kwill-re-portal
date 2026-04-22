@@ -2,7 +2,9 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { revalidateTag } from "next/cache";
 import { z } from "zod";
+import { TAGS } from "@/lib/cache-tags";
 
 const draftSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -74,11 +76,11 @@ export async function savePost(
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // Validate
+  // Validate — any non-draft save uses publish-style rules
   const schema =
-    status === "published"
-      ? (publishSchemas[data.type] ?? draftSchema)
-      : draftSchema;
+    status === "draft"
+      ? draftSchema
+      : (publishSchemas[data.type] ?? draftSchema);
   const parsed = schema.safeParse(data);
   const errors: Record<string, string> = {};
 
@@ -88,8 +90,8 @@ export async function savePost(
     });
   }
 
-  // Blog: check content_json has text
-  if (status === "published" && data.type === "blog") {
+  // Blog: check content_json has text on any non-draft save
+  if (status !== "draft" && data.type === "blog") {
     const hasContent = data.content_json?.content?.some((node: any) =>
       node.content?.some((c: any) => c.text?.trim()),
     );
@@ -217,6 +219,9 @@ export async function savePost(
     }
   }
 
+  revalidateTag(TAGS.posts, 'max');
+  if (postId) revalidateTag(TAGS.post(postId), 'max');
+
   return { success: true, id: postId! };
 }
 
@@ -256,6 +261,9 @@ export async function deletePost(postId: string) {
       performed_by: user.id,
     });
   }
+
+  revalidateTag(TAGS.posts, 'max');
+  revalidateTag(TAGS.post(postId), 'max');
 
   redirect("/posts");
 }

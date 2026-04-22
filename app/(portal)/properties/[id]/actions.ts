@@ -1,8 +1,9 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { TAGS } from '@/lib/cache-tags'
 
 export async function deleteProperty(propertyId: string) {
   const supabase = await createClient()
@@ -40,6 +41,8 @@ export async function deleteProperty(propertyId: string) {
     })
   }
 
+  revalidateTag(TAGS.properties, 'max')
+  revalidateTag(TAGS.property(propertyId), 'max')
   revalidatePath('/properties')
   redirect('/properties')
 }

@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronDown, ChevronUp } from 'lucide-react'
 
 type Submission = {
   id: number
@@ -13,106 +12,103 @@ type Submission = {
   created_at: string
 }
 
+function formatDate(iso: string) {
+  const d = new Date(iso)
+  const now = new Date()
+  const sameYear = d.getFullYear() === now.getFullYear()
+  const sameDay =
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate()
+  if (sameDay) {
+    return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+  }
+  return d.toLocaleDateString([], sameYear
+    ? { month: 'short', day: 'numeric' }
+    : { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
 export default function SubmissionsClient({ submissions }: { submissions: Submission[] }) {
   const [expanded, setExpanded] = useState<number | null>(null)
-  const [reviewed, setReviewed] = useState<Set<number>>(new Set())
-
-  function toggleExpand(id: number) {
-    setExpanded(prev => prev === id ? null : id)
-  }
-
-  function toggleReviewed(id: number) {
-    setReviewed(prev => {
-      const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
-      return next
-    })
-  }
 
   if (!submissions.length) {
     return (
-      <div className="bg-white border border-gray-200 rounded-lg p-12 text-center">
-        <p className="text-gray-500 text-sm">No submissions yet.</p>
+      <div className="bg-white border border-neutral-200 rounded-lg p-12 text-center">
+        <p className="text-neutral-500 text-sm">No submissions yet.</p>
       </div>
     )
   }
 
   return (
-    <div className="space-y-2">
-      {submissions.map(s => (
-        <div key={s.id}
-          className={`bg-white border rounded-lg overflow-hidden transition-colors ${
-            reviewed.has(s.id) ? 'border-gray-100 opacity-60' : 'border-gray-200'
-          }`}>
-          {/* Row */}
-          <div className="flex items-center gap-4 px-4 py-3 cursor-pointer hover:bg-gray-50"
-            onClick={() => toggleExpand(s.id)}>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-3">
-                <p className="font-medium text-gray-900 text-sm">{s.first_name}</p>
-                <p className="text-sm text-gray-500">{s.email}</p>
-                {s.division && (
-                  <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs hidden sm:inline">
-                    {s.division}
-                  </span>
-                )}
-                {s.company_size && (
-                  <span className="text-xs text-gray-400 hidden md:inline">{s.company_size}</span>
-                )}
-              </div>
-              <p className="text-xs text-gray-400 mt-0.5 truncate">{s.message}</p>
-            </div>
-            <div className="flex items-center gap-3 shrink-0">
-              <p className="text-xs text-gray-400 hidden sm:block">
-                {new Date(s.created_at).toLocaleDateString()}
-              </p>
-              <button
-                onClick={e => { e.stopPropagation(); toggleReviewed(s.id) }}
-                className={`text-xs px-2 py-1 rounded border transition-colors ${
-                  reviewed.has(s.id)
-                    ? 'border-green-300 text-green-700 bg-green-50'
-                    : 'border-gray-300 text-gray-500 hover:bg-gray-100'
-                }`}>
-                {reviewed.has(s.id) ? 'Reviewed' : 'Mark reviewed'}
-              </button>
-              {expanded === s.id
-                ? <ChevronUp className="w-4 h-4 text-gray-400" />
-                : <ChevronDown className="w-4 h-4 text-gray-400" />
-              }
-            </div>
-          </div>
+    <div className="bg-white border border-neutral-200 rounded-lg overflow-hidden divide-y divide-neutral-100">
+      {submissions.map(s => {
+        const isOpen = expanded === s.id
+        return (
+          <div key={s.id} className={isOpen ? 'bg-neutral-50' : ''}>
+            <button
+              type="button"
+              onClick={() => setExpanded(isOpen ? null : s.id)}
+              className="w-full flex items-baseline gap-4 px-5 py-3 text-left hover:bg-neutral-50 transition-colors"
+            >
+              <span className="font-semibold text-sm text-neutral-900 w-40 shrink-0 truncate">
+                {s.first_name}
+              </span>
+              <span className="flex-1 min-w-0 text-sm text-neutral-700 truncate">
+                <span className="text-neutral-900">
+                  {s.division ? `${s.division} inquiry` : 'New inquiry'}
+                </span>
+                <span className="text-neutral-400"> — {s.message}</span>
+              </span>
+              <span className="text-xs text-neutral-400 shrink-0 tabular-nums">
+                {formatDate(s.created_at)}
+              </span>
+            </button>
 
-          {/* Expanded message */}
-          {expanded === s.id && (
-            <div className="px-4 pb-4 pt-1 border-t border-gray-100 bg-gray-50">
-              <p className="text-xs font-medium text-gray-500 mb-1">Message</p>
-              <p className="text-sm text-gray-800 whitespace-pre-wrap">{s.message}</p>
-              <div className="flex gap-6 mt-3">
-                {s.company_size && (
-                  <div>
-                    <p className="text-xs text-gray-400">Company size</p>
-                    <p className="text-sm text-gray-700">{s.company_size}</p>
-                  </div>
-                )}
-                {s.division && (
-                  <div>
-                    <p className="text-xs text-gray-400">Division</p>
-                    <p className="text-sm text-gray-700">{s.division}</p>
-                  </div>
-                )}
-                <div>
-                  <p className="text-xs text-gray-400">Submitted</p>
-                  <p className="text-sm text-gray-700">{new Date(s.created_at).toLocaleString()}</p>
+            {isOpen && (
+              <div className="px-5 pb-5 pt-2 border-t border-neutral-100">
+                <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-neutral-500 mb-4">
+                  <span>
+                    <span className="text-neutral-400">From </span>
+                    <span className="text-neutral-700">{s.first_name}</span>
+                    <span className="text-neutral-400"> &lt;{s.email}&gt;</span>
+                  </span>
+                  {s.company_size && (
+                    <span>
+                      <span className="text-neutral-400">Company size </span>
+                      <span className="text-neutral-700">{s.company_size}</span>
+                    </span>
+                  )}
+                  {s.division && (
+                    <span>
+                      <span className="text-neutral-400">Division </span>
+                      <span className="text-neutral-700">{s.division}</span>
+                    </span>
+                  )}
+                  <span>
+                    <span className="text-neutral-400">Received </span>
+                    <span className="text-neutral-700">
+                      {new Date(s.created_at).toLocaleString()}
+                    </span>
+                  </span>
+                </div>
+
+                <p className="text-sm text-neutral-800 whitespace-pre-wrap leading-relaxed">
+                  {s.message}
+                </p>
+
+                <div className="mt-5">
+                  <a
+                    href={`mailto:${s.email}`}
+                    className="inline-flex items-center gap-2 bg-black text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-neutral-800 transition-colors"
+                  >
+                    Reply
+                  </a>
                 </div>
               </div>
-              <a href={`mailto:${s.email}`}
-                className="inline-block mt-3 text-xs text-blue-600 hover:underline">
-                Reply to {s.email} →
-              </a>
-            </div>
-          )}
-        </div>
-      ))}
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }
