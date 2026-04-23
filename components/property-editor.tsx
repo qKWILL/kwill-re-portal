@@ -17,6 +17,7 @@ import {
   type EditableSpaceInput,
 } from '@/components/properties/editable/EditableSpaces'
 import PropertyBrochureUpload from '@/components/property-brochure-upload'
+import PropertySlugEditor from '@/components/property-slug-editor'
 import StatusButtons from '@/app/(portal)/properties/[id]/status-buttons'
 import { ChevronDown } from 'lucide-react'
 import {
@@ -86,6 +87,7 @@ const BUILDING_CLASSES = [
 type InitialProperty = {
   id?: string
   title?: string
+  slug?: string | null
   summary?: string
   description?: string
   address?: string
@@ -116,6 +118,7 @@ type Props = {
   userId: string
   property?: InitialProperty
   autoPropertyId?: string
+  marketingOrigin?: string
 }
 
 export default function PropertyEditor({
@@ -123,6 +126,7 @@ export default function PropertyEditor({
   userId,
   property,
   autoPropertyId,
+  marketingOrigin,
 }: Props) {
   const router = useRouter()
   const [saving, setSaving] = useState(false)
@@ -470,6 +474,15 @@ export default function PropertyEditor({
               className="text-neutral-900 text-[clamp(2.2rem,0.15rem+8vw,3.125rem)] leading-[1.1] tracking-[-0.01em] font-serif font-normal mb-2 block"
               ariaLabel="Property title"
             />
+            {propertyId && property?.slug ? (
+              <div className="mb-3">
+                <PropertySlugEditor
+                  propertyId={propertyId}
+                  initialSlug={property.slug}
+                  marketingOrigin={marketingOrigin}
+                />
+              </div>
+            ) : null}
             <div className="text-neutral-500 mt-1 text-[15px] flex flex-wrap items-center gap-x-1.5">
               <EditableText
                 value={city}

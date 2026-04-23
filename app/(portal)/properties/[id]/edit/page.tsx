@@ -27,6 +27,7 @@ export default async function EditPropertyPage({
       teamMembers={realEstateTeam}
       userId={user.id}
       property={property}
+      marketingOrigin={process.env.NEXT_PUBLIC_MARKETING_ORIGIN}
     />
   )
 }

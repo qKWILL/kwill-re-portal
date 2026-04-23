@@ -5,6 +5,8 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 import { z } from 'zod'
 import { TAGS } from '@/lib/cache-tags'
 import { getPortalSession } from '@/lib/auth'
+import { fireMarketingRevalidation } from '@/lib/webhook'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 const draftSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -112,6 +114,27 @@ function generateSlug(title: string) {
   return title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || `property-${Date.now()}`
 }
 
+async function generateUniqueSlug(
+  supabase: SupabaseClient,
+  title: string,
+): Promise<string> {
+  const base = generateSlug(title)
+  let candidate = base
+  let suffix = 2
+  while (true) {
+    const { data } = await supabase
+      .from('properties')
+      .select('id')
+      .eq('slug', candidate)
+      .limit(1)
+      .maybeSingle()
+    if (!data) return candidate
+    candidate = `${base}-${suffix}`
+    suffix += 1
+    if (suffix > 50) return `${base}-${Date.now()}`
+  }
+}
+
 async function geocodeAddress(address: string, city: string, state: string, zip: string): Promise<{ lat: number; lng: number } | null> {
   try {
     const query = encodeURIComponent(`${address}, ${city}, ${state} ${zip}`)
@@ -188,7 +211,6 @@ export async function saveProperty(
     if (coords) { lat = coords.lat; lng = coords.lng }
   }
 
-  const slug = generateSlug(data.title)
   const sizeMin = data.size_sf_min ? Number(data.size_sf_min) : null
   const sizeMax = data.size_sf_max ? Number(data.size_sf_max) : null
   const content = {
@@ -240,7 +262,6 @@ export async function saveProperty(
     featured: data.featured,
     content,
     status,
-    slug,
   }
 
   // Only update lat/lng if we got coords — don't overwrite existing with null
@@ -251,6 +272,7 @@ export async function saveProperty(
 
   let propertyId = data.id
   let priorOwnerId: string | null = null
+  let propertySlug: string | null = null
 
   if (data.id) {
     const { data: before } = await supabase.from('properties').select('*').eq('id', data.id).single()
@@ -260,7 +282,9 @@ export async function saveProperty(
       return { success: false, errors: { _: 'Not authorized' } }
 
     priorOwnerId = before.created_by
+    propertySlug = before.slug ?? null
 
+    // Slug is locked after create. Title edits do NOT change the URL.
     const { error } = await supabase.from('properties').update(payload).eq('id', data.id)
     if (error) return { success: false, errors: { _: error.message } }
     const { data: after } = await supabase.from('properties').select('*').eq('id', data.id).single()
@@ -277,13 +301,15 @@ export async function saveProperty(
     }
     await persistSpaces(supabase, data.id, data.spaces ?? [])
   } else {
+    const slug = await generateUniqueSlug(supabase, data.title)
     const { data: newProp, error } = await supabase
       .from('properties')
-      .insert({ ...payload, created_by: user.id })
-      .select('id')
+      .insert({ ...payload, slug, created_by: user.id })
+      .select('id, slug')
       .single()
     if (error || !newProp) return { success: false, errors: { _: error?.message ?? 'Failed to create property' } }
     propertyId = newProp.id
+    propertySlug = newProp.slug
     await supabase.from('audit_log').insert({
       table_name: 'properties', record_id: newProp.id, action: 'create',
       before: null, after: newProp, performed_by: user.id,
@@ -297,29 +323,14 @@ export async function saveProperty(
     await persistSpaces(supabase, newProp.id, data.spaces ?? [])
   }
 
-  // Fire webhook on publish
-  if (status === 'active') {
-    const { data: config } = await supabase
-      .from('app_config')
-      .select('key, value')
-      .in('key', ['revalidation_url', 'webhook_secret'])
-    const configMap = Object.fromEntries((config ?? []).map(r => [r.key, r.value]))
-    if (configMap.revalidation_url && configMap.webhook_secret) {
-      const body = JSON.stringify({
-        event: 'publish', table: 'properties', record_id: propertyId,
-        path: '/properties', timestamp: new Date().toISOString(),
-      })
-      const encoder = new TextEncoder()
-      const cryptoKey = await crypto.subtle.importKey('raw', encoder.encode(configMap.webhook_secret),
-        { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
-      const signature = await crypto.subtle.sign('HMAC', cryptoKey, encoder.encode(body))
-      const sigHex = Array.from(new Uint8Array(signature)).map(b => b.toString(16).padStart(2, '0')).join('')
-      await fetch(configMap.revalidation_url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Webhook-Signature': sigHex },
-        body,
-      }).catch(() => {})
-    }
+  if (propertyId && status === 'active') {
+    await fireMarketingRevalidation(supabase, {
+      event: data.id ? 'update' : 'publish',
+      table: 'properties',
+      record_id: propertyId,
+      slug: propertySlug,
+      path: '/properties',
+    })
   }
 
   revalidateTag(TAGS.properties, 'max')
