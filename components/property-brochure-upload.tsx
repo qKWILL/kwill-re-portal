@@ -39,7 +39,12 @@ export default function PropertyBrochureUpload({
         return
       }
 
-      const path = `${propertyId}/brochures/${Date.now()}-${file.name}`
+      const safeName = file.name
+        .normalize('NFKD')
+        .replace(/[^\w.\-]+/g, '_')
+        .replace(/_+/g, '_')
+        .replace(/^_+|_+$/g, '')
+      const path = `${propertyId}/brochures/${Date.now()}-${safeName || 'brochure.pdf'}`
       const { error: uploadError } = await supabase.storage
         .from('property-media')
         .upload(path, file)
