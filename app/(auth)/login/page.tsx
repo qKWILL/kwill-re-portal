@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import LoginForm from './login-form'
@@ -11,9 +12,16 @@ export default async function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-neutral-50">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-neutral-900">KWILL Merchant Advisors</h1>
-          <p className="text-neutral-500 mt-2">Portal Sign In</p>
+        <div className="flex flex-col items-center mb-8">
+          <Image
+            src="/KWILL Logo_Horizontal.png"
+            alt="KWILL Merchant Advisors"
+            width={280}
+            height={75}
+            priority
+            className="h-14 w-auto"
+          />
+          <p className="text-neutral-500 mt-4">Portal Sign In</p>
         </div>
         <LoginForm />
       </div>
