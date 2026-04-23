@@ -21,7 +21,6 @@ export default async function LoginPage() {
             priority
             className="h-14 w-auto"
           />
-          <p className="text-neutral-500 mt-4">Portal Sign In</p>
         </div>
         <LoginForm />
       </div>
