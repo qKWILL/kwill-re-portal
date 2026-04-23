@@ -7,4 +7,5 @@ export const TAGS = {
   teamMember: (id: string) => `portal-team-member-${id}`,
   submissions: "portal-submissions",
   userDashboard: (userId: string) => `portal-user-dashboard-${userId}`,
+  users: "portal-users",
 } as const;

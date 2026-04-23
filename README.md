@@ -48,10 +48,30 @@ Open [http://localhost:3000](http://localhost:3000).
 
 | Role | Capabilities |
 |---|---|
-| `admin` | Full access — create, edit, publish, delete, view submissions |
+| `admin` | Full access — create, edit, publish, delete, view submissions, manage portal access |
 | `editor` | Create, edit, publish own content. Cannot delete. Cannot view submissions. Cannot edit other users' content. |
 
 Roles are stored in the `user_roles` table and enforced both in server actions and via Supabase RLS policies.
+
+### Super-admin
+
+`qmorton@kwilladvisors.com` is a hardcoded super-admin. Only the super-admin can:
+
+- Create a new user directly as `admin`
+- Change an existing admin's role (demote to editor)
+- Unlink an admin's team profile
+
+Any admin can invite editors and promote editors to admin.
+
+## Adding users
+
+Authentication is passwordless. To add someone:
+
+1. Go to **Access** in the sidebar (admin only) or open a team member's profile.
+2. Enter their email, pick a role, optionally link to a team profile, and submit.
+3. The user can now sign in from `/login` — they'll receive a magic link by email.
+
+We never store passwords and the Supabase "invite user" email is not used. The account is provisioned silently via the admin API (`SUPABASE_SERVICE_ROLE_KEY` must be set in the runtime environment).
 
 ## Scripts
 

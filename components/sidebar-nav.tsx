@@ -14,6 +14,7 @@ import {
   LogOut,
   Menu,
   X,
+  ShieldCheck,
 } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import type { PortalRole } from "@/lib/auth";
@@ -24,6 +25,10 @@ const navItems = [
   { href: "/posts", label: "Posts", icon: FileText },
   { href: "/team", label: "Team", icon: Users },
   { href: "/submissions", label: "Submissions", icon: Inbox },
+];
+
+const adminNavItems = [
+  { href: "/admin/access", label: "Access", icon: ShieldCheck },
 ];
 
 export default function SidebarNav({
@@ -102,6 +107,14 @@ export default function SidebarNav({
           >
             <nav className="flex-1 p-4 space-y-1">
               {renderItems(navItems)}
+              {role === "admin" ? (
+                <>
+                  <div className="px-3 pt-4 pb-1 text-[10px] uppercase tracking-wider text-neutral-400">
+                    Admin
+                  </div>
+                  {renderItems(adminNavItems)}
+                </>
+              ) : null}
             </nav>
             <div className="p-4 border-t border-neutral-200">
               <div className="px-3 py-2 mb-2">
@@ -138,6 +151,14 @@ export default function SidebarNav({
         </div>
         <nav className="flex-1 p-4 space-y-1">
           {renderItems(navItems)}
+          {role === "admin" ? (
+            <>
+              <div className="px-3 pt-4 pb-1 text-[10px] uppercase tracking-wider text-neutral-400">
+                Admin
+              </div>
+              {renderItems(adminNavItems)}
+            </>
+          ) : null}
         </nav>
         <div className="p-4 border-t border-neutral-200">
           <div className="px-3 py-2 mb-2">

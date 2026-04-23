@@ -5,10 +5,13 @@ import { createClient } from "@/lib/supabase/server";
 
 export type PortalRole = "admin" | "editor";
 
+export const SUPER_ADMIN_EMAIL = "qmorton@kwilladvisors.com";
+
 export type PortalSession = {
   user: User;
   role: PortalRole;
   isAdmin: boolean;
+  isSuperAdmin: boolean;
 };
 
 // React.cache dedupes the result within a single request, so the layout
@@ -28,5 +31,8 @@ export const getPortalSession = cache(async (): Promise<PortalSession> => {
     .single();
 
   const role: PortalRole = roleRow?.role === "admin" ? "admin" : "editor";
-  return { user, role, isAdmin: role === "admin" };
+  const isSuperAdmin =
+    role === "admin" &&
+    (user.email ?? "").toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
+  return { user, role, isAdmin: role === "admin", isSuperAdmin };
 });
