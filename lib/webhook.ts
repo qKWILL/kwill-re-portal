@@ -17,10 +17,11 @@ export async function fireMarketingRevalidation(
   const { data: config } = await supabase
     .from('app_config')
     .select('key, value')
-    .in('key', ['revalidation_url', 'webhook_secret'])
+    .in('key', ['revalidation_url', 'webhook_secret', 'vercel_protection_bypass'])
 
   const configMap = Object.fromEntries((config ?? []).map((r: { key: string; value: string }) => [r.key, r.value]))
   if (!configMap.revalidation_url || !configMap.webhook_secret) return
+  const bypass = configMap.vercel_protection_bypass
 
   // Support multiple URLs (comma/newline separated) so preview deployments can
   // be revalidated alongside production while a branch is being tested.
@@ -44,13 +45,15 @@ export async function fireMarketingRevalidation(
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('')
 
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'X-Webhook-Signature': sigHex,
+  }
+  if (bypass) headers['x-vercel-protection-bypass'] = bypass
+
   await Promise.all(
     urls.map((url: string) =>
-      fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Webhook-Signature': sigHex },
-        body,
-      }).catch(() => {
+      fetch(url, { method: 'POST', headers, body }).catch(() => {
         // Best-effort fan-out: failure of one URL must not block the others.
       }),
     ),
