@@ -169,7 +169,11 @@ export const getSubmissionsList = unstable_cache(
       .order("created_at", { ascending: false });
     if (tab.division) query = query.eq("division", tab.division);
     if (propertyFilter) query = query.eq("property_id", propertyFilter);
-    const { data } = await query;
+    const { data, error } = await query;
+    if (error) {
+      console.error("[getSubmissionsList]", error);
+      return [] as SubmissionRow[];
+    }
     return (data ?? []) as SubmissionRow[];
   },
   ["portal-submissions-list"],
