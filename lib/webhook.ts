@@ -22,6 +22,14 @@ export async function fireMarketingRevalidation(
   const configMap = Object.fromEntries((config ?? []).map((r: { key: string; value: string }) => [r.key, r.value]))
   if (!configMap.revalidation_url || !configMap.webhook_secret) return
 
+  // Support multiple URLs (comma/newline separated) so preview deployments can
+  // be revalidated alongside production while a branch is being tested.
+  const urls = configMap.revalidation_url
+    .split(/[\s,]+/)
+    .map((u: string) => u.trim())
+    .filter(Boolean)
+  if (urls.length === 0) return
+
   const body = JSON.stringify({ ...payload, timestamp: new Date().toISOString() })
   const encoder = new TextEncoder()
   const cryptoKey = await crypto.subtle.importKey(
@@ -36,13 +44,17 @@ export async function fireMarketingRevalidation(
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('')
 
-  await fetch(configMap.revalidation_url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Webhook-Signature': sigHex },
-    body,
-  }).catch(() => {
-    // Best-effort. Marketing site will still pick up changes on next cacheLife expiry.
-  })
+  await Promise.all(
+    urls.map((url: string) =>
+      fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Webhook-Signature': sigHex },
+        body,
+      }).catch(() => {
+        // Best-effort fan-out: failure of one URL must not block the others.
+      }),
+    ),
+  )
 }
 
 export async function fetchPropertySlug(
