@@ -221,6 +221,7 @@ export async function savePost(
 
   revalidateTag(TAGS.posts, 'max');
   if (postId) revalidateTag(TAGS.post(postId), 'max');
+  revalidateTag(TAGS.userDashboard(user.id), 'max');
 
   return { success: true, id: postId! };
 }
@@ -264,6 +265,10 @@ export async function deletePost(postId: string) {
 
   revalidateTag(TAGS.posts, 'max');
   revalidateTag(TAGS.post(postId), 'max');
+  revalidateTag(TAGS.userDashboard(user.id), 'max');
+  if (before?.created_by && before.created_by !== user.id) {
+    revalidateTag(TAGS.userDashboard(before.created_by), 'max');
+  }
 
   redirect("/posts");
 }

@@ -1,5 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
-import { redirect, notFound } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Pencil } from 'lucide-react'
@@ -7,6 +6,7 @@ import DOMPurify from 'isomorphic-dompurify'
 import DeletePostButton from './delete-post-button'
 import PostStatusButton from './post-status-button'
 import { getPostById } from '@/lib/cached-data'
+import { getPortalSession } from '@/lib/auth'
 
 function getYoutubeId(url: string) {
   const match = url.match(
@@ -21,20 +21,10 @@ export default async function PostDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const { data: roleRow } = await supabase
-    .from('user_roles')
-    .select('role')
-    .eq('user_id', user.id)
-    .single()
-  const isAdmin = roleRow?.role === 'admin'
-
-  const post = await getPostById(id)
+  const [{ user, isAdmin }, post] = await Promise.all([
+    getPortalSession(),
+    getPostById(id),
+  ])
 
   if (!post) notFound()
 

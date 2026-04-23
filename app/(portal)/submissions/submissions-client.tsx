@@ -5,6 +5,7 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { X } from 'lucide-react'
 import AnimatedTabs from '@/components/ui/AnimatedTabs'
+import type { SubmissionRow } from '@/lib/cached-data'
 import {
   SUBMISSION_TABS,
   DEFAULT_SUBMISSION_TAB,
@@ -12,26 +13,8 @@ import {
   type SubmissionTabKey,
 } from './tabs'
 
-type SubmissionProperty = {
-  id: string
-  title: string | null
-}
-
-type Submission = {
-  id: number
-  first_name: string
-  email: string
-  company_size: string
-  message: string
-  division: string | null
-  submission_type: string | null
-  property_id: string | null
-  property: SubmissionProperty | null
-  created_at: string
-}
-
 interface SubmissionsClientProps {
-  submissions: Submission[]
+  submissions: SubmissionRow[]
   activeTab: SubmissionTabKey
   tabCounts: Record<SubmissionTabKey, number>
   activePropertyId: string | null

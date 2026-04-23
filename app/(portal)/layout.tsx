@@ -1,23 +1,12 @@
-import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
 import SidebarNav from '@/components/sidebar-nav'
+import { getPortalSession } from '@/lib/auth'
 
 export default async function PortalLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const { data: roleRow } = await supabase
-    .from('user_roles')
-    .select('role')
-    .eq('user_id', user.id)
-    .single()
-
-  const role = roleRow?.role ?? 'editor'
+  const { user, role } = await getPortalSession()
 
   return (
     <div className="min-h-screen flex bg-neutral-50 items-start">

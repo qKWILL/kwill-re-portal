@@ -16,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
+import type { PortalRole } from "@/lib/auth";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -30,7 +31,7 @@ export default function SidebarNav({
   role,
 }: {
   user: User;
-  role: string;
+  role: PortalRole;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -52,10 +53,11 @@ export default function SidebarNav({
         <Link
           key={href}
           href={href}
+          prefetch
           onClick={() => setOpen(false)}
-          className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+          className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium ${
             active
-              ? "bg-neutral-900 text-white"
+              ? "bg-neutral-100 text-neutral-900"
               : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900"
           }`}
         >
@@ -70,7 +72,7 @@ export default function SidebarNav({
       {/* Mobile top bar */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-white border-b border-neutral-200 flex items-center px-4 h-16">
         <div className="w-9 shrink-0" aria-hidden />
-        <Link href="/dashboard" className="flex-1 flex items-center justify-center">
+        <Link href="/dashboard" prefetch className="flex-1 flex items-center justify-center">
           <Image
             src="/KWILL Logo_Horizontal.png"
             alt="KWILL"
@@ -110,7 +112,7 @@ export default function SidebarNav({
               </div>
               <button
                 onClick={handleSignOut}
-                className="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 w-full transition-colors"
+                className="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 w-full "
               >
                 <LogOut className="w-4 h-4" />
                 Sign Out
@@ -123,7 +125,7 @@ export default function SidebarNav({
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex w-64 h-screen sticky top-0 bg-white border-r border-neutral-200 flex-col">
         <div className="p-6 border-b border-neutral-200 flex items-center justify-center">
-          <Link href="/dashboard" className="flex items-center justify-center w-full">
+          <Link href="/dashboard" prefetch className="flex items-center justify-center w-full">
             <Image
               src="/KWILL Logo_Horizontal.png"
               alt="KWILL"
@@ -146,7 +148,7 @@ export default function SidebarNav({
           </div>
           <button
             onClick={handleSignOut}
-            className="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 w-full transition-colors"
+            className="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 w-full "
           >
             <LogOut className="w-4 h-4" />
             Sign Out

@@ -1,9 +1,9 @@
-import { createClient } from '@/lib/supabase/server'
-import { redirect, notFound } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Pencil } from 'lucide-react'
 import { TeamMemberHeader } from '@/components/team/TeamMemberHeader'
 import { getTeamMemberById } from '@/lib/cached-data'
+import { getPortalSession } from '@/lib/auth'
 import {
   parseExperienceText,
   type ExperienceEntry,
@@ -22,20 +22,10 @@ export default async function TeamMemberDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const { data: roleRow } = await supabase
-    .from('user_roles')
-    .select('role')
-    .eq('user_id', user.id)
-    .single()
-  const isAdmin = roleRow?.role === 'admin'
-
-  const member = await getTeamMemberById(id)
+  const [{ user, isAdmin }, member] = await Promise.all([
+    getPortalSession(),
+    getTeamMemberById(id),
+  ])
 
   if (!member) notFound()
 

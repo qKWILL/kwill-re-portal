@@ -1,9 +1,8 @@
-import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
 import PropertiesClient from './properties-client'
 import { getPropertiesList } from '@/lib/cached-data'
+import { getPortalSession } from '@/lib/auth'
 import type { PortalPropertyCard } from '@/components/properties/PropertyCard'
 
 type PropertyMediaRow = {
@@ -18,13 +17,10 @@ export default async function PropertiesPage({
   searchParams: Promise<{ status?: string; q?: string; view?: string }>
 }) {
   const { status, q, view } = await searchParams
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const rows = await getPropertiesList()
+  const [, rows] = await Promise.all([
+    getPortalSession(),
+    getPropertiesList(),
+  ])
 
   const query = (q ?? '').toLowerCase().trim()
   const filtered = rows.filter((row) => {

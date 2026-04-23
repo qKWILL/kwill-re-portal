@@ -1,10 +1,10 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { z } from 'zod'
 import { TAGS } from '@/lib/cache-tags'
+import { getPortalSession } from '@/lib/auth'
 
 const draftSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -136,8 +136,7 @@ export async function saveProperty(
   status: 'draft' | 'active' | 'pending' | 'sold' | 'leased'
 ): Promise<SavePropertyResult> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const { user, isAdmin } = await getPortalSession()
 
   // Run ALL validation together so all errors show at once
   const schema = status === 'draft' ? draftSchema : publishSchema
@@ -251,17 +250,16 @@ export async function saveProperty(
   }
 
   let propertyId = data.id
+  let priorOwnerId: string | null = null
 
   if (data.id) {
-    const { data: roleRow } = await supabase
-      .from('user_roles').select('role').eq('user_id', user.id).single()
-    const isAdmin = roleRow?.role === 'admin'
-
     const { data: before } = await supabase.from('properties').select('*').eq('id', data.id).single()
 
     if (!before) return { success: false, errors: { _: 'Property not found' } }
     if (!isAdmin && before.created_by !== user.id)
       return { success: false, errors: { _: 'Not authorized' } }
+
+    priorOwnerId = before.created_by
 
     const { error } = await supabase.from('properties').update(payload).eq('id', data.id)
     if (error) return { success: false, errors: { _: error.message } }
@@ -326,6 +324,10 @@ export async function saveProperty(
 
   revalidateTag(TAGS.properties, 'max')
   if (propertyId) revalidateTag(TAGS.property(propertyId), 'max')
+  revalidateTag(TAGS.userDashboard(user.id), 'max')
+  if (priorOwnerId && priorOwnerId !== user.id) {
+    revalidateTag(TAGS.userDashboard(priorOwnerId), 'max')
+  }
   revalidatePath('/properties', 'layout')
 
   return { success: true, id: propertyId! }

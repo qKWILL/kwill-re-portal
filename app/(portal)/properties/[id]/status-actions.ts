@@ -2,17 +2,12 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath, revalidateTag } from 'next/cache'
-import { redirect } from 'next/navigation'
 import { TAGS } from '@/lib/cache-tags'
+import { getPortalSession } from '@/lib/auth'
 
 export async function updatePropertyStatus(propertyId: string, status: string) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const { data: roleRow } = await supabase
-    .from('user_roles').select('role').eq('user_id', user.id).single()
-  const isAdmin = roleRow?.role === 'admin'
+  const { user, isAdmin } = await getPortalSession()
 
   const { data: before } = await supabase
     .from('properties')
@@ -67,5 +62,8 @@ export async function updatePropertyStatus(propertyId: string, status: string) {
 
   revalidateTag(TAGS.properties, 'max')
   revalidateTag(TAGS.property(propertyId), 'max')
+  if (before?.created_by) {
+    revalidateTag(TAGS.userDashboard(before.created_by), 'max')
+  }
   revalidatePath(`/properties/${propertyId}`)
 }

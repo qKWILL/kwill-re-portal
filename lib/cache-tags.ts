@@ -5,4 +5,6 @@ export const TAGS = {
   post: (id: string) => `portal-post-${id}`,
   team: "portal-team",
   teamMember: (id: string) => `portal-team-member-${id}`,
+  submissions: "portal-submissions",
+  userDashboard: (userId: string) => `portal-user-dashboard-${userId}`,
 } as const;

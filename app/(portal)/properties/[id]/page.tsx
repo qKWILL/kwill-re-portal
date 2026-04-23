@@ -1,10 +1,10 @@
-import { createClient } from '@/lib/supabase/server'
-import { redirect, notFound } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Pencil, Map as MapIcon, ExternalLink, Download } from 'lucide-react'
 import DeleteButton from './delete-button'
 import StatusButtons from './status-buttons'
-import { getPropertyById } from '@/lib/cached-data'
+import { getPropertyById, getBrochureDownloadCount } from '@/lib/cached-data'
+import { getPortalSession } from '@/lib/auth'
 import { PropertyGallery } from '@/components/properties/PropertyGallery'
 import { PropertySidebar } from '@/components/properties/PropertySidebar'
 import { PropertyFeatures } from '@/components/properties/PropertyFeatures'
@@ -26,30 +26,13 @@ export default async function PropertyDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const { data: roleRow } = await supabase
-    .from('user_roles')
-    .select('role')
-    .eq('user_id', user.id)
-    .single()
-  const role = roleRow?.role ?? 'editor'
-  const isAdmin = role === 'admin'
-
-  const row = await getPropertyById(id)
+  const [{ user, isAdmin }, row, submissionCount] = await Promise.all([
+    getPortalSession(),
+    getPropertyById(id),
+    getBrochureDownloadCount(id),
+  ])
 
   if (!row) notFound()
-
-  const { count: brochureDownloadCount } = await supabase
-    .from('form_submissions')
-    .select('id', { count: 'exact', head: true })
-    .eq('property_id', id)
-    .eq('submission_type', 'brochure_download')
-  const submissionCount = brochureDownloadCount ?? 0
 
   const isOwner = row.created_by === user.id
   const canChangeStatus = isAdmin || isOwner

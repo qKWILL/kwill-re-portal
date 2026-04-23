@@ -1,13 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
 import PostEditor from '@/components/post-editor'
+import { getPortalSession } from '@/lib/auth'
 
 export default async function NewPostPage() {
+  await getPortalSession()
   const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
 
   const { data: teamMembers } = await supabase
     .from('team_members')

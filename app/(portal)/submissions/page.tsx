@@ -1,12 +1,15 @@
-import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
 import SubmissionsClient from './submissions-client'
 import {
-  SUBMISSION_TABS,
   DEFAULT_SUBMISSION_TAB,
   findSubmissionTab,
   type SubmissionTabKey,
 } from './tabs'
+import {
+  getSubmissionsList,
+  getSubmissionTabCounts,
+  getPropertiesList,
+} from '@/lib/cached-data'
+import { getPortalSession } from '@/lib/auth'
 
 function normalizeTab(raw: string | string[] | undefined): SubmissionTabKey {
   const value = Array.isArray(raw) ? raw[0] : raw
@@ -28,58 +31,21 @@ export default async function SubmissionsPage({
 }: {
   searchParams: Promise<{ property?: string; tab?: string }>
 }) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
   const params = await searchParams
   const activeTab = normalizeTab(params.tab)
   const propertyFilter = normalizePropertyParam(params.property)
   const tabConfig = findSubmissionTab(activeTab)!
 
-  let query = supabase
-    .from('form_submissions')
-    .select('*, property:properties(id, title)')
-    .order('created_at', { ascending: false })
+  const [, submissions, tabCounts, propertiesForTitle] = await Promise.all([
+    getPortalSession(),
+    getSubmissionsList(activeTab, propertyFilter),
+    getSubmissionTabCounts(propertyFilter),
+    propertyFilter ? getPropertiesList() : Promise.resolve([]),
+  ])
 
-  query = query.eq('submission_type', tabConfig.submissionType)
-  if (tabConfig.division) {
-    query = query.eq('division', tabConfig.division)
-  }
-  if (propertyFilter) {
-    query = query.eq('property_id', propertyFilter)
-  }
-
-  const { data: submissions } = await query
-
-  const tabCountEntries = await Promise.all(
-    SUBMISSION_TABS.map(async (t) => {
-      let countQuery = supabase
-        .from('form_submissions')
-        .select('id', { count: 'exact', head: true })
-        .eq('submission_type', t.submissionType)
-      if (t.division) countQuery = countQuery.eq('division', t.division)
-      if (propertyFilter) countQuery = countQuery.eq('property_id', propertyFilter)
-      const { count } = await countQuery
-      return [t.key, count ?? 0] as const
-    }),
-  )
-  const tabCounts = Object.fromEntries(tabCountEntries) as Record<
-    SubmissionTabKey,
-    number
-  >
-
-  let propertyChipTitle: string | null = null
-  if (propertyFilter) {
-    const { data: propertyRow } = await supabase
-      .from('properties')
-      .select('title')
-      .eq('id', propertyFilter)
-      .maybeSingle()
-    propertyChipTitle = propertyRow?.title ?? null
-  }
+  const propertyChipTitle = propertyFilter
+    ? (propertiesForTitle.find((p) => p.id === propertyFilter)?.title ?? null)
+    : null
 
   return (
     <div className="max-w-[1200px] mx-auto px-6 pt-8 pb-16">
@@ -88,11 +54,11 @@ export default async function SubmissionsPage({
           Submissions
         </h1>
         <p className="text-sm text-neutral-500 mt-1">
-          {submissions?.length ?? 0} in {tabConfig.label}
+          {submissions.length} in {tabConfig.label}
         </p>
       </div>
       <SubmissionsClient
-        submissions={submissions ?? []}
+        submissions={submissions}
         activeTab={activeTab}
         tabCounts={tabCounts}
         activePropertyId={propertyFilter}

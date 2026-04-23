@@ -1,9 +1,13 @@
-import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Plus, ArrowRight } from 'lucide-react'
-import { createClient } from '@/lib/supabase/server'
-import { getRecentActiveProperties, getRecentPublishedPosts } from '@/lib/cached-data'
+import { getPortalSession } from '@/lib/auth'
+import {
+  getRecentActiveProperties,
+  getRecentPublishedPosts,
+  getDashboardSnapshot,
+  getTeamMembersList,
+} from '@/lib/cached-data'
 
 type PropertyMediaRow = {
   url: string
@@ -31,61 +35,25 @@ function formatInboxDate(iso: string) {
 }
 
 export default async function DashboardPage() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const sessionPromise = getPortalSession()
+  const teamPromise = getTeamMembersList()
+  const recentPropertiesPromise = getRecentActiveProperties(3)
+  const recentPostsPromise = getRecentPublishedPosts(3)
+  const { user } = await sessionPromise
+  const [snapshot, teamMembers, recentPropertiesData, recentPostsData] =
+    await Promise.all([
+      getDashboardSnapshot(user.id),
+      teamPromise,
+      recentPropertiesPromise,
+      recentPostsPromise,
+    ])
 
-  const { data: roleRow } = await supabase
-    .from('user_roles')
-    .select('role')
-    .eq('user_id', user.id)
-    .single()
-  const role = roleRow?.role ?? 'editor'
-
-  const { data: meMember } = await supabase
-    .from('team_members')
-    .select('name')
-    .eq('user_id', user.id)
-    .maybeSingle()
+  const meMember = teamMembers.find((m) => m.user_id === user.id)
   const firstName = meMember?.name?.split(' ')[0]
 
-  const [
-    submissionsRes,
-    myPropertyDraftsRes,
-    myPostDraftsRes,
-    recentPropertiesData,
-    recentPostsData,
-  ] = await Promise.all([
-    supabase
-      .from('form_submissions')
-      .select('id, first_name, email, message, division, submission_type, created_at')
-      .order('created_at', { ascending: false })
-      .limit(4),
-    supabase
-      .from('properties')
-      .select('id, title, status, updated_at')
-      .eq('created_by', user.id)
-      .neq('status', 'active')
-      .is('deleted_at', null)
-      .order('updated_at', { ascending: false })
-      .limit(5),
-    supabase
-      .from('posts')
-      .select('id, title, type, updated_at')
-      .eq('created_by', user.id)
-      .eq('status', 'draft')
-      .is('deleted_at', null)
-      .order('updated_at', { ascending: false })
-      .limit(5),
-    getRecentActiveProperties(3),
-    getRecentPublishedPosts(3),
-  ])
-
-  const submissions = submissionsRes.data ?? []
-  const propertyDrafts = myPropertyDraftsRes.data ?? []
-  const postDrafts = myPostDraftsRes.data ?? []
+  const submissions = snapshot.recentSubmissions
+  const propertyDrafts = snapshot.propertyDrafts
+  const postDrafts = snapshot.postDrafts
   const drafts = [
     ...propertyDrafts.map((p) => ({
       id: p.id,
@@ -145,9 +113,6 @@ export default async function DashboardPage() {
           <h1 className="text-neutral-900 text-[clamp(2.2rem,0.15rem+8vw,3.125rem)] leading-[1.1] tracking-[-0.01em] font-serif font-normal">
             {firstName ? `Welcome back, ${firstName}` : 'Welcome back'}
           </h1>
-          <p className="text-sm text-neutral-500 mt-1">
-            Signed in as {user.email} · <span className="capitalize">{role}</span>
-          </p>
         </div>
         <div className="flex gap-2">
           <Link

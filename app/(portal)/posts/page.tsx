@@ -1,9 +1,8 @@
-import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
 import PostsClient from './posts-client'
 import { getPostsList } from '@/lib/cached-data'
+import { getPortalSession } from '@/lib/auth'
 import type { PortalPostCard } from '@/components/news/NewsCard'
 
 const TYPE_FILTERS = ['blog', 'news', 'podcast', 'linkedin']
@@ -14,13 +13,7 @@ export default async function PostsPage({
   searchParams: Promise<{ filter?: string; q?: string; view?: string }>
 }) {
   const { filter, q, view } = await searchParams
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const rows = await getPostsList()
+  const [, rows] = await Promise.all([getPortalSession(), getPostsList()])
 
   const query = (q ?? '').toLowerCase().trim()
   const filtered = rows.filter((row) => {

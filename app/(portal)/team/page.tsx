@@ -1,9 +1,8 @@
-import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
 import TeamClient, { type PortalTeamRow } from './team-client'
 import { getTeamMembersList } from '@/lib/cached-data'
+import { getPortalSession } from '@/lib/auth'
 
 export default async function TeamPage({
   searchParams,
@@ -11,20 +10,10 @@ export default async function TeamPage({
   searchParams: Promise<{ view?: string }>
 }) {
   const { view } = await searchParams
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const { data: roleRow } = await supabase
-    .from('user_roles')
-    .select('role')
-    .eq('user_id', user.id)
-    .single()
-  const isAdmin = roleRow?.role === 'admin'
-
-  const rows = await getTeamMembersList()
+  const [{ user, isAdmin }, rows] = await Promise.all([
+    getPortalSession(),
+    getTeamMembersList(),
+  ])
 
   const members: PortalTeamRow[] = rows.map((row) => ({
     id: row.id,
