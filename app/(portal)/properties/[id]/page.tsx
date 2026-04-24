@@ -135,7 +135,13 @@ export default async function PropertyDetailPage({
       {/* Admin bar */}
       <div className="sticky top-0 z-40 border-b border-neutral-200 bg-white/80 backdrop-blur">
         <div className="max-w-[1200px] mx-auto px-6 py-3 flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-4 flex-wrap">
+            <Link
+              href="/properties"
+              className="text-sm text-neutral-500 hover:text-neutral-900"
+            >
+              ← Properties
+            </Link>
             <StatusButtons
               propertyId={id}
               currentStatus={property.status}
