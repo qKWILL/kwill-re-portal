@@ -380,6 +380,7 @@ export default function PostEditor({
             <PostRichEditor
               ref={editorRef}
               initialContent={post?.content_json}
+              initialHTML={post?.content_html}
               placeholder={
                 type === 'podcast'
                   ? 'Show notes, transcript, or summary…'
