@@ -63,6 +63,16 @@ export default function AccessClient({
     return [self, ...copy];
   }, [users, currentUserId]);
 
+  // Defensively exclude any team_member that's already linked to a portal user
+  // in `users`. Server already filters by user_id IS NULL, but the two queries
+  // can briefly disagree across renders.
+  const linkableTeamMembers = useMemo(() => {
+    const taken = new Set(
+      users.map((u) => u.team_member?.id).filter(Boolean) as string[],
+    );
+    return unlinkedTeamMembers.filter((m) => !taken.has(m.id));
+  }, [users, unlinkedTeamMembers]);
+
   function refresh() {
     router.refresh();
   }
@@ -288,13 +298,13 @@ export default function AccessClient({
         open={inviteOpen}
         onOpenChange={setInviteOpen}
         canCreateAdmin={isSuperAdmin}
-        unlinkedTeamMembers={unlinkedTeamMembers}
+        unlinkedTeamMembers={linkableTeamMembers}
         onDone={refresh}
       />
 
       <LinkDialog
         target={linkFor}
-        unlinkedTeamMembers={unlinkedTeamMembers}
+        unlinkedTeamMembers={linkableTeamMembers}
         onOpenChange={(open) => !open && setLinkFor(null)}
         onSubmit={handleLinkSubmit}
       />

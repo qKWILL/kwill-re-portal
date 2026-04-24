@@ -2,16 +2,17 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { Pencil } from 'lucide-react'
+import { CircleCheck, Pencil } from 'lucide-react'
 import type { PortalTeamCard } from './TeamMemberCard'
 
 type Props = {
   member: PortalTeamCard
   canEdit: boolean
   interactive: boolean
+  hasAccount?: boolean
 }
 
-export function TeamMemberRow({ member, canEdit, interactive }: Props) {
+export function TeamMemberRow({ member, canEdit, interactive, hasAccount }: Props) {
   const tags = member.tags ?? []
   const shownTags = tags.slice(0, 3)
   const extraTags = Math.max(0, tags.length - shownTags.length)
@@ -29,11 +30,20 @@ export function TeamMemberRow({ member, canEdit, interactive }: Props) {
           />
         ) : null}
       </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-base font-medium text-neutral-900 truncate">
-          {member.name || 'Unnamed'}
-        </p>
-        <p className="text-sm text-neutral-500 truncate">{member.role || ''}</p>
+      <div className="flex-1 min-w-0 flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-base font-medium text-neutral-900 truncate">
+            {member.name || 'Unnamed'}
+          </p>
+          <p className="text-sm text-neutral-500 truncate">{member.role || ''}</p>
+        </div>
+        {hasAccount ? (
+          <CircleCheck
+            strokeWidth={1.5}
+            aria-label="Has portal access"
+            className="size-[18px] shrink-0 [&>circle]:fill-emerald-500 [&>circle]:stroke-emerald-500 [&>path]:stroke-white"
+          />
+        ) : null}
       </div>
       <div className="hidden md:flex items-center gap-1.5 flex-wrap justify-end flex-shrink-0 max-w-xs">
         {shownTags.map((t) => (

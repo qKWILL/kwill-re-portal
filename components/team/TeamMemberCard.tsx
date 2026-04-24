@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { ChevronRight, Pencil } from 'lucide-react'
+import { ChevronRight, CircleCheck, Pencil } from 'lucide-react'
 
 export type PortalTeamCard = {
   id: string
@@ -16,9 +16,10 @@ type Props = {
   member: PortalTeamCard
   canEdit: boolean
   interactive: boolean
+  hasAccount?: boolean
 }
 
-export function TeamMemberCard({ member, canEdit, interactive }: Props) {
+export function TeamMemberCard({ member, canEdit, interactive, hasAccount }: Props) {
   const inner = (
     <>
       <div className="aspect-square w-full mb-5 overflow-hidden relative bg-neutral-100">
@@ -36,8 +37,8 @@ export function TeamMemberCard({ member, canEdit, interactive }: Props) {
           </div>
         )}
       </div>
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
           <p className="text-md font-medium text-neutral-900 mb-0.5 flex items-center">
             {member.name || 'Unnamed'}
             {interactive ? (
@@ -46,6 +47,13 @@ export function TeamMemberCard({ member, canEdit, interactive }: Props) {
           </p>
           <p className="font-light text-neutral-600">{member.role || ''}</p>
         </div>
+        {hasAccount ? (
+          <CircleCheck
+            strokeWidth={1.5}
+            aria-label="Has portal access"
+            className="size-[18px] shrink-0 [&>circle]:fill-emerald-500 [&>circle]:stroke-emerald-500 [&>path]:stroke-white"
+          />
+        ) : null}
       </div>
     </>
   )

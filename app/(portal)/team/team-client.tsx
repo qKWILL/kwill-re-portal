@@ -110,6 +110,7 @@ export default function TeamClient({
                 member={m}
                 canEdit={canEdit}
                 interactive={interactive}
+                hasAccount={!!m.user_id}
               />
             )
           })}
@@ -126,6 +127,7 @@ export default function TeamClient({
                 member={m}
                 canEdit={canEdit}
                 interactive={interactive}
+                hasAccount={!!m.user_id}
               />
             )
           })}
