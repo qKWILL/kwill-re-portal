@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { TAGS } from '@/lib/cache-tags'
 import { getPortalSession } from '@/lib/auth'
+import { fireMarketingRevalidation } from '@/lib/webhook'
 
 export async function updatePropertyStatus(propertyId: string, status: string) {
   const supabase = await createClient()
@@ -34,29 +35,17 @@ export async function updatePropertyStatus(propertyId: string, status: string) {
       performed_by: user.id,
     })
 
-    // Fire webhook if publishing or unpublishing
+    // Fire webhook if publishing or unpublishing. Sending the slug lets the
+    // marketing site invalidate its slug-keyed detail-page cache; without it
+    // only the listing tag refreshes.
     if (status === 'active' || before?.status === 'active') {
-      const { data: config } = await supabase
-        .from('app_config')
-        .select('key, value')
-        .in('key', ['revalidation_url', 'webhook_secret'])
-      const configMap = Object.fromEntries((config ?? []).map(r => [r.key, r.value]))
-      if (configMap.revalidation_url && configMap.webhook_secret) {
-        const body = JSON.stringify({
-          event: 'status_change', table: 'properties', record_id: propertyId,
-          path: '/properties', timestamp: new Date().toISOString(),
-        })
-        const encoder = new TextEncoder()
-        const cryptoKey = await crypto.subtle.importKey('raw', encoder.encode(configMap.webhook_secret),
-          { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
-        const signature = await crypto.subtle.sign('HMAC', cryptoKey, encoder.encode(body))
-        const sigHex = Array.from(new Uint8Array(signature)).map(b => b.toString(16).padStart(2, '0')).join('')
-        await fetch(configMap.revalidation_url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-Webhook-Signature': sigHex },
-          body,
-        }).catch(() => {})
-      }
+      await fireMarketingRevalidation(supabase, {
+        event: 'status_change',
+        table: 'properties',
+        record_id: propertyId,
+        slug: (before?.slug as string | null) ?? null,
+        path: '/properties',
+      })
     }
   }
 

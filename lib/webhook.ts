@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 type RevalidatePayload = {
-  event: 'publish' | 'update' | 'media'
+  event: 'publish' | 'update' | 'media' | 'status_change'
   table: 'properties' | 'posts' | 'team_members'
   record_id: string
   slug?: string | null
