@@ -19,7 +19,7 @@ import {
   unlinkTeamMember,
   type PortalUserRow,
 } from "@/lib/actions/users";
-import { isSuperAdminEmail } from "@/lib/auth";
+import { isSuperAdminEmail } from "@/lib/super-admin";
 
 type UnlinkedMember = {
   id: string;

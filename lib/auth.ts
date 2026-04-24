@@ -2,20 +2,15 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import {
+  SUPER_ADMIN_EMAIL,
+  SUPER_ADMIN_EMAILS,
+  isSuperAdminEmail,
+} from "@/lib/super-admin";
 
 export type PortalRole = "admin" | "editor";
 
-export const SUPER_ADMIN_EMAILS = [
-  "qmorton@kwilladvisors.com",
-  "qasirhmorton@gmail.com",
-] as const;
-
-export const SUPER_ADMIN_EMAIL = SUPER_ADMIN_EMAILS[0];
-
-export function isSuperAdminEmail(email: string | null | undefined): boolean {
-  const normalized = (email ?? "").toLowerCase();
-  return SUPER_ADMIN_EMAILS.some((e) => e.toLowerCase() === normalized);
-}
+export { SUPER_ADMIN_EMAIL, SUPER_ADMIN_EMAILS, isSuperAdminEmail };
 
 export type PortalSession = {
   user: User;
