@@ -5,7 +5,17 @@ import { createClient } from "@/lib/supabase/server";
 
 export type PortalRole = "admin" | "editor";
 
-export const SUPER_ADMIN_EMAIL = "qmorton@kwilladvisors.com";
+export const SUPER_ADMIN_EMAILS = [
+  "qmorton@kwilladvisors.com",
+  "qasirhmorton@gmail.com",
+] as const;
+
+export const SUPER_ADMIN_EMAIL = SUPER_ADMIN_EMAILS[0];
+
+export function isSuperAdminEmail(email: string | null | undefined): boolean {
+  const normalized = (email ?? "").toLowerCase();
+  return SUPER_ADMIN_EMAILS.some((e) => e.toLowerCase() === normalized);
+}
 
 export type PortalSession = {
   user: User;
@@ -31,8 +41,6 @@ export const getPortalSession = cache(async (): Promise<PortalSession> => {
     .single();
 
   const role: PortalRole = roleRow?.role === "admin" ? "admin" : "editor";
-  const isSuperAdmin =
-    role === "admin" &&
-    (user.email ?? "").toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
+  const isSuperAdmin = role === "admin" && isSuperAdminEmail(user.email);
   return { user, role, isAdmin: role === "admin", isSuperAdmin };
 });

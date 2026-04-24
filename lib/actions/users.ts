@@ -4,7 +4,7 @@ import { revalidateTag } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getPortalSession, SUPER_ADMIN_EMAIL, type PortalRole } from "@/lib/auth";
+import { getPortalSession, isSuperAdminEmail, type PortalRole } from "@/lib/auth";
 import { TAGS } from "@/lib/cache-tags";
 
 export type PortalUserRow = {
@@ -31,9 +31,7 @@ const inviteSchema = z.object({
   teamMemberId: z.string().uuid().nullable().optional(),
 });
 
-function isSuper(email: string | null | undefined) {
-  return (email ?? "").toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
-}
+const isSuper = isSuperAdminEmail;
 
 async function requireAdmin() {
   const session = await getPortalSession();

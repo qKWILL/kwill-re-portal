@@ -19,6 +19,7 @@ import {
   unlinkTeamMember,
   type PortalUserRow,
 } from "@/lib/actions/users";
+import { isSuperAdminEmail } from "@/lib/auth";
 
 type UnlinkedMember = {
   id: string;
@@ -157,8 +158,7 @@ export default function AccessClient({
         <div className="border-t border-neutral-100">
           {ordered.map((u) => {
             const isSelf = u.id === currentUserId;
-            const targetIsSuper =
-              u.email.toLowerCase() === "qmorton@kwilladvisors.com";
+            const targetIsSuper = isSuperAdminEmail(u.email);
             const canChangeRole =
               !isSelf &&
               !targetIsSuper &&
@@ -238,21 +238,25 @@ export default function AccessClient({
                   {formatLastSignIn(u.last_sign_in_at)}
                 </div>
 
-                {/* Role toggle */}
-                <RoleToggle
-                  value={u.role}
-                  disabled={!canChangeRole || pending}
-                  onChange={(r) => handleRoleChange(u, r)}
-                  hint={
-                    isSelf
-                      ? "Can't change your own role"
-                      : targetIsSuper
-                        ? "Super-admin role is locked"
-                        : u.role === "admin" && !isSuperAdmin
-                          ? "Only qmorton@kwilladvisors.com can change an admin's role"
+                {/* Role — toggle for super-admin, static label for everyone else */}
+                {isSuperAdmin ? (
+                  <RoleToggle
+                    value={u.role}
+                    disabled={!canChangeRole || pending}
+                    onChange={(r) => handleRoleChange(u, r)}
+                    hint={
+                      isSelf
+                        ? "Can't change your own role"
+                        : targetIsSuper
+                          ? "Super-admin role is locked"
                           : undefined
-                  }
-                />
+                    }
+                  />
+                ) : (
+                  <span className="inline-flex items-center rounded-full border border-neutral-200 px-3 py-1 text-xs font-medium capitalize text-neutral-700">
+                    {u.role}
+                  </span>
+                )}
 
                 {/* Actions */}
                 <div className="w-8 shrink-0 flex justify-end">
