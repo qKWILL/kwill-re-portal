@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { ChevronRight, CircleCheck, Pencil } from 'lucide-react'
+import { CircleCheck, Pencil } from 'lucide-react'
 
 export type PortalTeamCard = {
   id: string
@@ -37,23 +37,18 @@ export function TeamMemberCard({ member, canEdit, interactive, hasAccount }: Pro
           </div>
         )}
       </div>
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-md font-medium text-neutral-900 mb-0.5 flex items-center">
-            {member.name || 'Unnamed'}
-            {interactive ? (
-              <ChevronRight className="w-4 h-4 ml-2 transition-transform duration-300 group-hover:translate-x-1" />
-            ) : null}
-          </p>
-          <p className="font-light text-neutral-600">{member.role || ''}</p>
-        </div>
-        {hasAccount ? (
-          <CircleCheck
-            strokeWidth={1.5}
-            aria-label="Has portal access"
-            className="size-[18px] shrink-0 [&>circle]:fill-emerald-500 [&>circle]:stroke-emerald-500 [&>path]:stroke-white"
-          />
-        ) : null}
+      <div className="min-w-0">
+        <p className="text-md font-medium text-neutral-900 mb-0.5 flex items-center">
+          {member.name || 'Unnamed'}
+          {hasAccount ? (
+            <CircleCheck
+              strokeWidth={1.5}
+              aria-label="Has portal access"
+              className="ml-2 size-[18px] shrink-0 [&>circle]:fill-emerald-500 [&>circle]:stroke-emerald-500 [&>path]:stroke-white"
+            />
+          ) : null}
+        </p>
+        <p className="font-light text-neutral-600">{member.role || ''}</p>
       </div>
     </>
   )
