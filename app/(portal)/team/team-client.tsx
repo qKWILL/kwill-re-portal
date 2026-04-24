@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useMemo, useState } from 'react'
-import { useRouter, usePathname, useSearchParams } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import {
   TeamMemberCard,
   type PortalTeamCard,
@@ -26,21 +26,21 @@ export default function TeamClient({
   isAdmin: boolean
   currentView: ViewMode
 }) {
-  const router = useRouter()
   const pathname = usePathname()
-  const searchParams = useSearchParams()
+  const [view, setViewState] = useState<ViewMode>(currentView)
   const [search, setSearch] = useState('')
   const [tag, setTag] = useState('all')
 
   const setView = useCallback(
     (next: ViewMode) => {
-      const params = new URLSearchParams(searchParams.toString())
+      setViewState(next)
+      const params = new URLSearchParams(window.location.search)
       if (next === 'list') params.set('view', 'list')
       else params.delete('view')
       const query = params.toString()
-      router.push(query ? `${pathname}?${query}` : pathname)
+      window.history.replaceState(null, '', query ? `${pathname}?${query}` : pathname)
     },
-    [router, pathname, searchParams],
+    [pathname],
   )
 
   const allTags = useMemo(() => {
@@ -90,7 +90,7 @@ export default function TeamClient({
             onChange={(e) => setSearch(e.target.value)}
             className="px-3 py-2 rounded-none w-48 hidden sm:block border border-neutral-200 focus:border-neutral-300 focus:outline-none focus:ring-1 focus:ring-neutral-300 text-neutral-900 text-sm"
           />
-          <ViewToggle value={currentView} onChange={setView} />
+          <ViewToggle value={view} onChange={setView} />
         </div>
       </div>
 
@@ -98,7 +98,7 @@ export default function TeamClient({
         <div className="bg-neutral-50 rounded-lg p-12 text-center">
           <p className="text-neutral-500 text-sm">No matching members.</p>
         </div>
-      ) : currentView === 'list' ? (
+      ) : view === 'list' ? (
         <div className="border-t border-neutral-100">
           {filtered.map((m) => {
             const isSelf = m.user_id === currentUserId

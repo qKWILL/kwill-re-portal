@@ -34,6 +34,7 @@ export default function PostsClient({
   const router = useRouter()
   const pathname = usePathname()
   const [search, setSearch] = useState(currentSearch)
+  const [view, setViewState] = useState<ViewMode>(currentView)
 
   const updateURL = useCallback(
     (newFilter: string, newSearch: string, newView: ViewMode) => {
@@ -47,8 +48,20 @@ export default function PostsClient({
     [router, pathname],
   )
 
+  const setView = useCallback(
+    (next: ViewMode) => {
+      setViewState(next)
+      const params = new URLSearchParams(window.location.search)
+      if (next === 'list') params.set('view', 'list')
+      else params.delete('view')
+      const query = params.toString()
+      window.history.replaceState(null, '', query ? `${pathname}?${query}` : pathname)
+    },
+    [pathname],
+  )
+
   const handleSearch = useDebouncedCallback((value: string) => {
-    updateURL(currentFilter, value, currentView)
+    updateURL(currentFilter, value, view)
   }, 300)
 
   return (
@@ -57,7 +70,7 @@ export default function PostsClient({
         <AnimatedTabs
           filters={FILTERS}
           activeFilter={currentFilter}
-          onFilterChange={(f) => updateURL(f, search, currentView)}
+          onFilterChange={(f) => updateURL(f, search, view)}
           formatLabel={(f) => FILTER_LABELS[f] ?? f}
         />
         <div className="flex items-center gap-3">
@@ -71,10 +84,7 @@ export default function PostsClient({
             }}
             className="px-3 py-2 rounded-none w-48 hidden sm:block border border-neutral-200 focus:border-neutral-300 focus:outline-none focus:ring-1 focus:ring-neutral-300 text-neutral-900 text-sm"
           />
-          <ViewToggle
-            value={currentView}
-            onChange={(v) => updateURL(currentFilter, search, v)}
-          />
+          <ViewToggle value={view} onChange={setView} />
         </div>
       </div>
 
@@ -94,7 +104,7 @@ export default function PostsClient({
             </Link>
           )}
         </div>
-      ) : currentView === 'list' ? (
+      ) : view === 'list' ? (
         <div className="border-t border-neutral-100">
           {posts.map((p) => (
             <NewsRow key={p.id} post={p} />
