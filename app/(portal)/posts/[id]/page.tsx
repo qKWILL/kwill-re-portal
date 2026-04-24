@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Pencil } from 'lucide-react'
-import DOMPurify from 'isomorphic-dompurify'
+import sanitizeHtml from 'sanitize-html'
 import DeletePostButton from './delete-post-button'
 import PostStatusButton from './post-status-button'
 import { getPostById } from '@/lib/cached-data'
@@ -147,7 +147,18 @@ export default async function PostDetailPage({
           <div
             className="prose prose-neutral max-w-none"
             dangerouslySetInnerHTML={{
-              __html: DOMPurify.sanitize(post.content_html ?? ''),
+              __html: sanitizeHtml(post.content_html ?? '', {
+                allowedTags: sanitizeHtml.defaults.allowedTags.concat([
+                  'img',
+                  'h1',
+                  'h2',
+                ]),
+                allowedAttributes: {
+                  ...sanitizeHtml.defaults.allowedAttributes,
+                  img: ['src', 'alt', 'title', 'width', 'height'],
+                  a: ['href', 'name', 'target', 'rel'],
+                },
+              }),
             }}
           />
         ) : post.external_url && !isPodcast ? (
