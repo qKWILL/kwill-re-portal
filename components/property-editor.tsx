@@ -10,7 +10,6 @@ import { EditableRichText } from '@/components/properties/editable/EditableRichT
 import { EditableSelect } from '@/components/properties/editable/EditableSelect'
 import { EditableHighlights } from '@/components/properties/editable/EditableHighlights'
 import { EditableFeatures } from '@/components/properties/editable/EditableFeatures'
-import { EditableAgents } from '@/components/properties/editable/EditableAgents'
 import { EditableGallery } from '@/components/properties/editable/EditableGallery'
 import {
   EditableSpaces,
@@ -122,7 +121,7 @@ type Props = {
 }
 
 export default function PropertyEditor({
-  teamMembers,
+  teamMembers: _teamMembers,
   userId,
   property,
   autoPropertyId,
@@ -252,7 +251,7 @@ export default function PropertyEditor({
         })),
   )
 
-  const [agents, setAgents] = useState<
+  const [agents] = useState<
     { team_member_id: string; role: string }[]
   >(property?.property_agents ?? [])
 
@@ -930,24 +929,7 @@ export default function PropertyEditor({
 
             {/* Mobile sidebar */}
             <div className="lg:hidden mt-8 mb-8 border border-neutral-200 bg-white">
-              <div className="px-6 pt-6">
-                <h3 className="text-xs uppercase tracking-wide text-neutral-500">
-                  Contacts
-                </h3>
-              </div>
-              <div className="px-6">
-                <EditableAgents
-                  assignments={agents}
-                  onChange={(next) => {
-                    setAgents(next)
-                    if (next.some((a) => a.team_member_id))
-                      clearError('agents')
-                  }}
-                  teamMembers={teamMembers}
-                  error={!!errors.agents}
-                />
-              </div>
-              <div className="px-6 pb-6 pt-4">
+              <div className="px-6 pb-6 pt-6">
                 <span className="block w-full bg-neutral-900 text-white text-center py-3 rounded-full text-sm font-medium">
                   Contact For Details
                 </span>
@@ -957,24 +939,7 @@ export default function PropertyEditor({
           {/* Desktop sidebar */}
           <div className="hidden lg:block lg:w-[320px] flex-shrink-0 lg:sticky lg:top-24">
             <div className="border border-neutral-200 bg-white flex flex-col">
-              <div className="px-6 pt-6">
-                <h3 className="text-xs uppercase tracking-wide text-neutral-500">
-                  Contacts
-                </h3>
-              </div>
-              <div className="px-6">
-                <EditableAgents
-                  assignments={agents}
-                  onChange={(next) => {
-                    setAgents(next)
-                    if (next.some((a) => a.team_member_id))
-                      clearError('agents')
-                  }}
-                  teamMembers={teamMembers}
-                  error={!!errors.agents}
-                />
-              </div>
-              <div className="px-6 pb-6 pt-4">
+              <div className="px-6 pb-6 pt-6">
                 <span className="block w-full bg-neutral-900 text-white text-center py-3 rounded-full text-sm font-medium">
                   Contact For Details
                 </span>
