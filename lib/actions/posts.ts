@@ -17,11 +17,12 @@ const publishSchemas: Record<string, z.ZodObject<any>> = {
     type: z.literal("blog"),
     img_url: z.string().min(1, "Featured image is required to publish"),
   }),
+  // News requires excerpt + image. external_url OR content body is required —
+  // enforced separately below so authors can publish full articles or link out.
   news: z.object({
     title: z.string().min(1, "Title is required"),
     type: z.literal("news"),
     excerpt: z.string().min(1, "Excerpt is required to publish"),
-    external_url: z.string().min(1, "External URL is required to publish"),
     img_url: z.string().min(1, "Featured image is required to publish"),
   }),
   linkedin: z.object({
@@ -39,6 +40,17 @@ const publishSchemas: Record<string, z.ZodObject<any>> = {
     img_url: z.string().min(1, "Featured image is required to publish"),
   }),
 };
+
+function hasRichContent(content_json: any): boolean {
+  if (!content_json?.content) return false;
+  return content_json.content.some((node: any) => {
+    if (node.text?.trim()) return true;
+    if (Array.isArray(node.content)) {
+      return node.content.some((c: any) => c.text?.trim() || c.content?.length);
+    }
+    return false;
+  });
+}
 
 export type PostFormData = {
   id?: string;
@@ -90,12 +102,21 @@ export async function savePost(
     });
   }
 
-  // Blog: check content_json has text on any non-draft save
+  // Blog: post body required to publish
   if (status !== "draft" && data.type === "blog") {
-    const hasContent = data.content_json?.content?.some((node: any) =>
-      node.content?.some((c: any) => c.text?.trim()),
-    );
-    if (!hasContent) errors.content = "Post body is required to publish";
+    if (!hasRichContent(data.content_json)) {
+      errors.content = "Post body is required to publish";
+    }
+  }
+
+  // News: either external_url OR a non-empty body
+  if (status !== "draft" && data.type === "news") {
+    const hasUrl = !!data.external_url?.trim();
+    const hasBody = hasRichContent(data.content_json);
+    if (!hasUrl && !hasBody) {
+      errors.external_url =
+        "Add an external URL or write a body to publish";
+    }
   }
 
   if (Object.keys(errors).length > 0) return { success: false, errors };

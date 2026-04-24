@@ -1,20 +1,15 @@
 'use client'
 
-import {
-  forwardRef,
-  useEffect,
-  useImperativeHandle,
-  useRef,
-  useState,
-} from 'react'
+import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronDown, ExternalLink, Video } from 'lucide-react'
-import { useEditor, EditorContent } from '@tiptap/react'
-import StarterKit from '@tiptap/starter-kit'
 import { savePost, type PostFormData } from '@/lib/actions/posts'
 import { EditableText } from '@/components/properties/editable/EditableText'
 import { EditableRichText } from '@/components/properties/editable/EditableRichText'
 import { EditableHeroImage } from '@/components/properties/editable/EditableHeroImage'
+import PostRichEditor, {
+  type PostRichEditorHandle,
+} from '@/components/posts/PostRichEditor'
 import PostStatusButton from '@/app/(portal)/posts/[id]/post-status-button'
 import {
   DropdownMenu,
@@ -80,7 +75,7 @@ export default function PostEditor({
   const [youtubeUrl, setYoutubeUrl] = useState(post?.youtube_url ?? '')
   const [imgUrl, setImgUrl] = useState(post?.img_url ?? '')
   const [authorId, setAuthorId] = useState(post?.author_id ?? '')
-  const editorRef = useRef<BlogEditorHandle | null>(null)
+  const editorRef = useRef<PostRichEditorHandle | null>(null)
 
   const [externalModalOpen, setExternalModalOpen] = useState(false)
   const [externalDraft, setExternalDraft] = useState('')
@@ -105,9 +100,13 @@ export default function PostEditor({
 
     let content_json: unknown = post?.content_json ?? null
     let content_html: string | null = post?.content_html ?? null
-    if (type === 'blog' && editorRef.current) {
+    if (type !== 'linkedin' && editorRef.current) {
       content_json = editorRef.current.getJSON() ?? null
       content_html = editorRef.current.getHTML() ?? null
+    }
+    if (type === 'linkedin') {
+      content_json = null
+      content_html = null
     }
 
     const data: PostFormData = {
@@ -161,7 +160,7 @@ export default function PostEditor({
             <button
               type="button"
               onClick={() => router.back()}
-              className="text-sm text-neutral-500 hover:text-neutral-900 px-2"
+              className="pressable text-sm text-neutral-500 hover:text-neutral-900 px-2"
             >
               Cancel
             </button>
@@ -171,7 +170,7 @@ export default function PostEditor({
                   type="button"
                   onClick={() => handleSave('draft')}
                   disabled={saving}
-                  className="inline-flex items-center gap-1.5 border border-neutral-300 text-neutral-700 px-3 py-1.5 rounded-full text-xs font-medium hover:bg-neutral-50 transition-colors disabled:opacity-50"
+                  className="pressable inline-flex items-center gap-1.5 border border-neutral-300 text-neutral-700 px-3 py-1.5 rounded-full text-xs font-medium hover:bg-neutral-50 disabled:opacity-50"
                 >
                   {saving ? 'Saving…' : 'Save Draft'}
                 </button>
@@ -179,7 +178,7 @@ export default function PostEditor({
                   type="button"
                   onClick={() => handleSave('published')}
                   disabled={saving}
-                  className="inline-flex items-center gap-1.5 bg-black text-white px-3 py-1.5 rounded-full text-xs font-medium hover:bg-neutral-800 transition-colors disabled:opacity-50"
+                  className="pressable inline-flex items-center gap-1.5 bg-black text-white px-3 py-1.5 rounded-full text-xs font-medium hover:bg-neutral-800 disabled:opacity-50"
                 >
                   {saving ? 'Publishing…' : 'Publish'}
                 </button>
@@ -189,7 +188,7 @@ export default function PostEditor({
                 type="button"
                 onClick={() => handleSave(effectiveStatus)}
                 disabled={saving}
-                className="inline-flex items-center gap-1.5 bg-black text-white px-3 py-1.5 rounded-full text-xs font-medium hover:bg-neutral-800 transition-colors disabled:opacity-50"
+                className="pressable inline-flex items-center gap-1.5 bg-black text-white px-3 py-1.5 rounded-full text-xs font-medium hover:bg-neutral-800 disabled:opacity-50"
               >
                 {saving ? 'Saving…' : 'Save'}
               </button>
@@ -221,7 +220,7 @@ export default function PostEditor({
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium uppercase tracking-[0.15em] transition-colors bg-neutral-100 text-neutral-600 hover:bg-neutral-200 ${
+                className={`pressable inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium uppercase tracking-[0.15em] bg-neutral-100 text-neutral-600 hover:bg-neutral-200 ${
                   errors.type ? 'ring-1 ring-red-400' : ''
                 }`}
                 aria-label="Post type"
@@ -278,7 +277,7 @@ export default function PostEditor({
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors bg-neutral-100 text-neutral-700 hover:bg-neutral-200"
+                className="pressable inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-neutral-100 text-neutral-700 hover:bg-neutral-200"
                 aria-label="Author"
               >
                 {authorName}
@@ -333,26 +332,16 @@ export default function PostEditor({
       </div>
 
       {/* Body */}
-      <article className="max-w-[960px] mx-auto px-6 md:px-8 pt-12 pb-20">
-        {type === 'blog' ? (
-          <div className="min-h-[300px] border border-neutral-200 rounded-lg overflow-hidden">
-            <BlogEditor
-              ref={editorRef}
-              initialContent={post?.content_json}
-            />
-            {errors.content ? (
-              <p className="text-xs text-red-600 p-3">⚠ {errors.content}</p>
-            ) : null}
-          </div>
-        ) : type === 'podcast' ? (
-          <div className="space-y-6">
+      <article className="max-w-[960px] mx-auto px-6 md:px-8 pt-12 pb-20 space-y-10">
+        {type === 'podcast' ? (
+          <div className="space-y-4">
             <button
               type="button"
               onClick={() => {
                 setYoutubeDraft(youtubeUrl)
                 setYoutubeModalOpen(true)
               }}
-              className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-full text-neutral-700 bg-neutral-100 hover:bg-neutral-200 transition-colors ${
+              className={`pressable inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-full text-neutral-700 bg-neutral-100 hover:bg-neutral-200 ${
                 errors.youtube_url ? 'ring-1 ring-red-400' : ''
               }`}
             >
@@ -372,25 +361,65 @@ export default function PostEditor({
               </div>
             ) : null}
           </div>
+        ) : null}
+
+        {type === 'linkedin' ? (
+          <LinkedInCardPreview
+            title={title}
+            excerpt={excerpt}
+            imgUrl={imgUrl}
+            externalUrl={externalUrl}
+            errored={!!errors.external_url}
+            onEditUrl={() => {
+              setExternalDraft(externalUrl)
+              setExternalModalOpen(true)
+            }}
+          />
         ) : (
-          <div className="space-y-4">
-            <button
-              type="button"
-              onClick={() => {
-                setExternalDraft(externalUrl)
-                setExternalModalOpen(true)
-              }}
-              className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-full text-neutral-700 bg-neutral-100 hover:bg-neutral-200 transition-colors ${
-                errors.external_url ? 'ring-1 ring-red-400' : ''
-              }`}
-            >
-              <ExternalLink className="w-4 h-4" />
-              {externalUrl ? 'Edit external link' : 'Add external link'}
-            </button>
-            {externalUrl ? (
-              <p className="text-sm text-neutral-500 break-all">
-                {externalUrl}
-              </p>
+          <div key={type} className="editor-shell space-y-8">
+            <PostRichEditor
+              ref={editorRef}
+              initialContent={post?.content_json}
+              placeholder={
+                type === 'podcast'
+                  ? 'Show notes, transcript, or summary…'
+                  : type === 'news'
+                    ? 'Optional body — leave blank if this is a link-only news item.'
+                    : "Start writing… use '/' for commands."
+              }
+            />
+            {errors.content ? (
+              <p className="text-xs text-red-600">⚠ {errors.content}</p>
+            ) : null}
+
+            {type === 'news' ? (
+              <div className="flex items-center gap-3 pt-2">
+                <span className="text-[11px] uppercase tracking-[0.18em] text-neutral-400 shrink-0">
+                  External source
+                </span>
+                <span
+                  aria-hidden
+                  className="h-px flex-1 bg-neutral-200"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setExternalDraft(externalUrl)
+                    setExternalModalOpen(true)
+                  }}
+                  className={`pressable inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full text-neutral-700 bg-neutral-100 hover:bg-neutral-200 ${
+                    errors.external_url ? 'ring-1 ring-red-400' : ''
+                  }`}
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  {externalUrl ? 'Edit link' : 'Add link'}
+                </button>
+                {externalUrl ? (
+                  <span className="text-xs text-neutral-500 truncate max-w-[40%]">
+                    {externalUrl}
+                  </span>
+                ) : null}
+              </div>
             ) : null}
           </div>
         )}
@@ -419,7 +448,7 @@ export default function PostEditor({
             <button
               type="button"
               onClick={() => setExternalModalOpen(false)}
-              className="inline-flex items-center gap-1.5 border border-neutral-300 text-neutral-700 px-3 py-1.5 rounded-full text-xs font-medium hover:bg-neutral-50 transition-colors"
+              className="pressable inline-flex items-center gap-1.5 border border-neutral-300 text-neutral-700 px-3 py-1.5 rounded-full text-xs font-medium hover:bg-neutral-50"
             >
               Cancel
             </button>
@@ -430,7 +459,7 @@ export default function PostEditor({
                 clearError('external_url')
                 setExternalModalOpen(false)
               }}
-              className="inline-flex items-center gap-1.5 bg-black text-white px-3 py-1.5 rounded-full text-xs font-medium hover:bg-neutral-800 transition-colors"
+              className="pressable inline-flex items-center gap-1.5 bg-black text-white px-3 py-1.5 rounded-full text-xs font-medium hover:bg-neutral-800"
             >
               Save
             </button>
@@ -460,7 +489,7 @@ export default function PostEditor({
             <button
               type="button"
               onClick={() => setYoutubeModalOpen(false)}
-              className="inline-flex items-center gap-1.5 border border-neutral-300 text-neutral-700 px-3 py-1.5 rounded-full text-xs font-medium hover:bg-neutral-50 transition-colors"
+              className="pressable inline-flex items-center gap-1.5 border border-neutral-300 text-neutral-700 px-3 py-1.5 rounded-full text-xs font-medium hover:bg-neutral-50"
             >
               Cancel
             </button>
@@ -471,7 +500,7 @@ export default function PostEditor({
                 clearError('youtube_url')
                 setYoutubeModalOpen(false)
               }}
-              className="inline-flex items-center gap-1.5 bg-black text-white px-3 py-1.5 rounded-full text-xs font-medium hover:bg-neutral-800 transition-colors"
+              className="pressable inline-flex items-center gap-1.5 bg-black text-white px-3 py-1.5 rounded-full text-xs font-medium hover:bg-neutral-800"
             >
               Save
             </button>
@@ -482,39 +511,108 @@ export default function PostEditor({
   )
 }
 
-type BlogEditorHandle = {
-  getJSON: () => unknown
-  getHTML: () => string | null
+type LinkedInCardPreviewProps = {
+  title: string
+  excerpt: string
+  imgUrl: string
+  externalUrl: string
+  errored: boolean
+  onEditUrl: () => void
 }
 
-const BlogEditor = forwardRef<
-  BlogEditorHandle,
-  { initialContent?: unknown }
->(function BlogEditor({ initialContent }, ref) {
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
+function LinkedInCardPreview({
+  title,
+  excerpt,
+  imgUrl,
+  externalUrl,
+  errored,
+  onEditUrl,
+}: LinkedInCardPreviewProps) {
+  const previousImg = useRef<string>(imgUrl)
+  const [swapping, setSwapping] = useState(false)
 
-  const editor = useEditor({
-    extensions: [StarterKit],
-    content: (initialContent as string | object | undefined) ?? '',
-    immediatelyRender: false,
-    editorProps: {
-      attributes: {
-        class:
-          'prose prose-sm max-w-none focus:outline-none min-h-[250px] px-4 py-3',
-      },
-    },
-  })
+  if (previousImg.current !== imgUrl) {
+    previousImg.current = imgUrl
+  }
 
-  useImperativeHandle(ref, () => ({
-    getJSON: () => editor?.getJSON() ?? null,
-    getHTML: () => editor?.getHTML() ?? null,
-  }))
+  function handleImgLoad() {
+    setSwapping(false)
+  }
 
-  if (!mounted)
-    return (
-      <div className="h-[250px] bg-neutral-50 rounded border border-neutral-200 animate-pulse" />
-    )
+  function handleImgChange() {
+    setSwapping(true)
+    requestAnimationFrame(() => setSwapping(false))
+  }
 
-  return <EditorContent editor={editor} />
-})
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <span className="text-[11px] uppercase tracking-[0.18em] text-neutral-400">
+          Card preview
+        </span>
+        <span aria-hidden className="h-px flex-1 bg-neutral-200" />
+        <button
+          type="button"
+          onClick={onEditUrl}
+          className={`pressable inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full text-neutral-700 bg-neutral-100 hover:bg-neutral-200 ${
+            errored ? 'ring-1 ring-red-400' : ''
+          }`}
+        >
+          <ExternalLink className="w-3.5 h-3.5" />
+          {externalUrl ? 'Edit LinkedIn URL' : 'Add LinkedIn URL'}
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+        <article className="group block max-w-sm">
+          <div className="relative aspect-[4/3] border border-neutral-200 overflow-hidden bg-neutral-50">
+            {imgUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={imgUrl}
+                alt={title || 'LinkedIn post'}
+                onLoad={handleImgLoad}
+                onLoadStart={handleImgChange}
+                data-swapping={swapping || undefined}
+                className="linkedin-preview-image absolute inset-0 w-full h-full object-cover"
+              />
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center text-xs text-neutral-400">
+                Featured image
+              </div>
+            )}
+          </div>
+          <div className="linkedin-preview-stagger space-y-2 py-6">
+            <h4 className="text-xl font-sans font-medium tracking-[-0.2px] text-neutral-900 min-h-[1lh]">
+              {title || 'Post title'}
+            </h4>
+            <p className="text-sm max-w-[90%] text-neutral-800 min-h-[2lh]">
+              {excerpt || 'Excerpt appears here.'}
+            </p>
+          </div>
+        </article>
+
+        <aside className="text-sm text-neutral-500 leading-relaxed space-y-3 max-w-sm">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-neutral-400">
+            How this renders
+          </p>
+          <p>
+            LinkedIn posts appear as link cards on the public news grid. They
+            don&rsquo;t have a detail page — clicking opens the LinkedIn URL in
+            a new tab.
+          </p>
+          {externalUrl ? (
+            <p className="text-xs text-neutral-500 break-all pt-2 border-t border-neutral-200">
+              <span className="text-neutral-400">Links to: </span>
+              {externalUrl}
+            </p>
+          ) : (
+            <p className="text-xs text-amber-700">
+              Add a LinkedIn URL before publishing.
+            </p>
+          )}
+        </aside>
+      </div>
+    </div>
+  )
+}
