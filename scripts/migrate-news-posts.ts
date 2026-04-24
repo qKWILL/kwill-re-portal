@@ -184,7 +184,6 @@ async function main() {
       external_url: row.link ?? null,
       youtube_url:  row.youtubeUrl ?? null,
       author_id:    authorId,
-      content_json: contentJson ?? null,
       content_html: contentHtml ?? null,
       status:       'published' as const,   // all legacy posts were live
       slug:         generateSlug(row.title ?? '', row.id),

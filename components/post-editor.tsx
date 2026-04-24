@@ -45,7 +45,6 @@ type InitialPost = {
   youtube_url?: string | null
   img_url?: string | null
   author_id?: string | null
-  content_json?: unknown
   content_html?: string | null
   date?: string | null
 }
@@ -98,14 +97,11 @@ export default function PostEditor({
     setSaving(true)
     setErrors({})
 
-    let content_json: unknown = post?.content_json ?? null
     let content_html: string | null = post?.content_html ?? null
     if (type !== 'linkedin' && editorRef.current) {
-      content_json = editorRef.current.getJSON() ?? null
-      content_html = editorRef.current.getHTML() ?? null
+      content_html = editorRef.current.getHTML() || null
     }
     if (type === 'linkedin') {
-      content_json = null
       content_html = null
     }
 
@@ -118,7 +114,6 @@ export default function PostEditor({
       youtube_url: youtubeUrl,
       img_url: imgUrl,
       author_id: authorId,
-      content_json,
       content_html: content_html ?? undefined,
     }
 
@@ -379,7 +374,6 @@ export default function PostEditor({
           <div key={type} className="editor-shell space-y-8">
             <PostRichEditor
               ref={editorRef}
-              initialContent={post?.content_json}
               initialHTML={post?.content_html}
               placeholder={
                 type === 'podcast'

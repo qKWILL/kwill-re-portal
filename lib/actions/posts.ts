@@ -41,15 +41,12 @@ const publishSchemas: Record<string, z.ZodObject<any>> = {
   }),
 };
 
-function hasRichContent(content_json: any): boolean {
-  if (!content_json?.content) return false;
-  return content_json.content.some((node: any) => {
-    if (node.text?.trim()) return true;
-    if (Array.isArray(node.content)) {
-      return node.content.some((c: any) => c.text?.trim() || c.content?.length);
-    }
-    return false;
-  });
+// Tiptap emits "<p></p>" for an empty doc — strip tags + whitespace and
+// require real characters before treating a body as present.
+function hasRichContent(content_html: string | null | undefined): boolean {
+  if (!content_html) return false;
+  const stripped = content_html.replace(/<[^>]*>/g, "").trim();
+  return stripped.length > 0;
 }
 
 export type PostFormData = {
@@ -61,7 +58,6 @@ export type PostFormData = {
   youtube_url: string;
   img_url: string;
   author_id: string;
-  content_json?: any;
   content_html?: string;
 };
 
@@ -104,7 +100,7 @@ export async function savePost(
 
   // Blog: post body required to publish
   if (status !== "draft" && data.type === "blog") {
-    if (!hasRichContent(data.content_json)) {
+    if (!hasRichContent(data.content_html)) {
       errors.content = "Post body is required to publish";
     }
   }
@@ -112,7 +108,7 @@ export async function savePost(
   // News: either external_url OR a non-empty body
   if (status !== "draft" && data.type === "news") {
     const hasUrl = !!data.external_url?.trim();
-    const hasBody = hasRichContent(data.content_json);
+    const hasBody = hasRichContent(data.content_html);
     if (!hasUrl && !hasBody) {
       errors.external_url =
         "Add an external URL or write a body to publish";
@@ -130,7 +126,6 @@ export async function savePost(
     youtube_url: data.youtube_url || null,
     img_url: data.img_url || null,
     author_id: data.author_id || null,
-    content_json: data.content_json ?? null,
     content_html: data.content_html ?? null,
     date: status === "published" ? new Date().toISOString() : null,
     slug: generateSlug(data.title),

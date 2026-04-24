@@ -1,11 +1,6 @@
 'use client'
 
-import {
-  forwardRef,
-  useImperativeHandle,
-  useRef,
-  useState,
-} from 'react'
+import { forwardRef, useImperativeHandle, useState } from 'react'
 import { useCurrentEditor } from '@tiptap/react'
 import {
   EditorBubbleMenu,
@@ -27,50 +22,23 @@ import {
   EditorNodeText,
   EditorProvider,
   EditorSelector,
-  type JSONContent,
 } from '@/components/kibo-ui/editor'
 
 export type PostRichEditorHandle = {
-  getJSON: () => JSONContent | null
-  getHTML: () => string | null
+  getHTML: () => string
 }
 
 type Props = {
-  initialContent?: unknown
   initialHTML?: string | null
   placeholder?: string
 }
 
-function isEmptyJSON(json: unknown): boolean {
-  if (!json || typeof json !== 'object') return true
-  const doc = json as { content?: unknown[] }
-  if (!Array.isArray(doc.content) || doc.content.length === 0) return true
-  return !doc.content.some((node: any) => {
-    if (node?.text?.trim()) return true
-    if (Array.isArray(node?.content)) {
-      return node.content.some(
-        (c: any) => c?.text?.trim() || (Array.isArray(c?.content) && c.content.length),
-      )
-    }
-    return false
-  })
-}
-
 const PostRichEditor = forwardRef<PostRichEditorHandle, Props>(
-  function PostRichEditor({ initialContent, initialHTML, placeholder }, ref) {
-    // Tiptap accepts JSON (preferred) or an HTML string. Legacy posts may only
-    // have content_html, so fall back to that when JSON is missing or empty.
-    const content =
-      initialContent && !isEmptyJSON(initialContent)
-        ? (initialContent as object)
-        : initialHTML?.trim()
-          ? initialHTML
-          : ''
-
+  function PostRichEditor({ initialHTML, placeholder }, ref) {
     return (
       <EditorProvider
         className="article-prose min-h-[480px] max-w-none focus:outline-none"
-        content={content}
+        content={initialHTML?.trim() ? initialHTML : ''}
         placeholder={
           placeholder ??
           "Start writing… type '/' for commands, or select text to format."
@@ -104,8 +72,7 @@ const EditorBridge = forwardRef<PostRichEditorHandle>(function EditorBridge(
   useImperativeHandle(
     ref,
     () => ({
-      getJSON: () => editor?.getJSON() ?? null,
-      getHTML: () => editor?.getHTML() ?? null,
+      getHTML: () => editor?.getHTML() ?? '',
     }),
     [editor],
   )
