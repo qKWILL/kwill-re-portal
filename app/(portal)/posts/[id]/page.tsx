@@ -151,7 +151,7 @@ export default async function PostDetailPage({
       <article className="max-w-4xl mx-auto px-6 md:px-8 pt-12 pb-20">
         {hasContent ? (
           <div
-            className="prose prose-neutral max-w-none"
+            className="article-prose"
             dangerouslySetInnerHTML={{
               __html: sanitizeHtml(post.content_html ?? '', {
                 allowedTags: sanitizeHtml.defaults.allowedTags.concat([
