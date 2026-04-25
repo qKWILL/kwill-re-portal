@@ -117,7 +117,9 @@ export async function savePost(
 
   if (Object.keys(errors).length > 0) return { success: false, errors };
 
-  const payload = {
+  // Build the base payload without `date` and `slug` — both depend on the
+  // existing row state and only get set on first publish / first save.
+  const basePayload = {
     title: data.title,
     type: data.type,
     status,
@@ -127,8 +129,6 @@ export async function savePost(
     img_url: data.img_url || null,
     author_id: data.author_id || null,
     content_html: data.content_html ?? null,
-    date: status === "published" ? new Date().toISOString() : null,
-    slug: generateSlug(data.title),
   };
 
   let postId = data.id;
@@ -151,9 +151,18 @@ export async function savePost(
     if (!isAdmin && before.created_by !== user.id)
       return { success: false, errors: { _: "Not authorized" } };
 
+    // Preserve the original publish date. Only stamp `date` when this save
+    // is the *first* time the post becomes published (no prior date set).
+    // Editing a published post must not bump its position in the feed.
+    const updatePayload: Record<string, unknown> = { ...basePayload };
+    if (!before.date && status === "published") {
+      updatePayload.date = new Date().toISOString();
+    }
+    // slug is not regenerated on update — once published, the URL stays.
+
     const { error } = await supabase
       .from("posts")
-      .update(payload)
+      .update(updatePayload)
       .eq("id", data.id);
     if (error) return { success: false, errors: { _: error.message } };
     const { data: after } = await supabase
@@ -170,9 +179,15 @@ export async function savePost(
       performed_by: user.id,
     });
   } else {
+    const insertPayload = {
+      ...basePayload,
+      slug: generateSlug(data.title),
+      date: status === "published" ? new Date().toISOString() : null,
+      created_by: user.id,
+    };
     const { data: newPost, error } = await supabase
       .from("posts")
-      .insert({ ...payload, created_by: user.id })
+      .insert(insertPayload)
       .select("id")
       .single();
     if (error || !newPost)
