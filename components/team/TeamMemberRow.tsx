@@ -10,9 +10,16 @@ type Props = {
   canEdit: boolean
   interactive: boolean
   hasAccount?: boolean
+  hasSignedIn?: boolean
 }
 
-export function TeamMemberRow({ member, canEdit, interactive, hasAccount }: Props) {
+export function TeamMemberRow({
+  member,
+  canEdit,
+  interactive,
+  hasAccount,
+  hasSignedIn,
+}: Props) {
   const tags = member.tags ?? []
   const shownTags = tags.slice(0, 3)
   const extraTags = Math.max(0, tags.length - shownTags.length)
@@ -40,8 +47,16 @@ export function TeamMemberRow({ member, canEdit, interactive, hasAccount }: Prop
         {hasAccount ? (
           <CircleCheck
             strokeWidth={1.5}
-            aria-label="Has portal access"
-            className="size-[18px] shrink-0 [&>circle]:fill-emerald-500 [&>circle]:stroke-emerald-500 [&>path]:stroke-white"
+            aria-label={
+              hasSignedIn
+                ? 'Has portal access — signed in'
+                : 'Invited — not yet signed in'
+            }
+            className={
+              hasSignedIn
+                ? 'size-[18px] shrink-0 [&>circle]:fill-emerald-500 [&>circle]:stroke-emerald-500 [&>path]:stroke-white'
+                : 'size-[18px] shrink-0 [&>circle]:fill-neutral-300 [&>circle]:stroke-neutral-300 [&>path]:stroke-white'
+            }
           />
         ) : null}
       </div>

@@ -20,7 +20,7 @@ export default async function EditPostPage({
 
   return (
     <PostEditor
-      teamMembers={teamMembers.map((m) => ({ id: m.id, name: m.name }))}
+      teamMembers={teamMembers.map((m) => ({ id: m.id, name: m.name ?? '' }))}
       post={post}
     />
   )

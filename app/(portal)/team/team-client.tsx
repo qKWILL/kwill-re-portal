@@ -12,6 +12,7 @@ import { ViewToggle, type ViewMode } from '@/components/ui/ViewToggle'
 
 export type PortalTeamRow = PortalTeamCard & {
   user_id: string | null
+  last_sign_in_at: string | null
   tags: string[]
 }
 
@@ -111,6 +112,7 @@ export default function TeamClient({
                 canEdit={canEdit}
                 interactive={interactive}
                 hasAccount={!!m.user_id}
+                hasSignedIn={!!m.last_sign_in_at}
               />
             )
           })}
@@ -128,6 +130,7 @@ export default function TeamClient({
                 canEdit={canEdit}
                 interactive={interactive}
                 hasAccount={!!m.user_id}
+                hasSignedIn={!!m.last_sign_in_at}
               />
             )
           })}

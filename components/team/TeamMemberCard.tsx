@@ -17,9 +17,16 @@ type Props = {
   canEdit: boolean
   interactive: boolean
   hasAccount?: boolean
+  hasSignedIn?: boolean
 }
 
-export function TeamMemberCard({ member, canEdit, interactive, hasAccount }: Props) {
+export function TeamMemberCard({
+  member,
+  canEdit,
+  interactive,
+  hasAccount,
+  hasSignedIn,
+}: Props) {
   const inner = (
     <>
       <div className="aspect-square w-full mb-5 overflow-hidden relative bg-neutral-100">
@@ -43,8 +50,16 @@ export function TeamMemberCard({ member, canEdit, interactive, hasAccount }: Pro
           {hasAccount ? (
             <CircleCheck
               strokeWidth={1.5}
-              aria-label="Has portal access"
-              className="ml-2 size-[18px] shrink-0 [&>circle]:fill-emerald-500 [&>circle]:stroke-emerald-500 [&>path]:stroke-white"
+              aria-label={
+                hasSignedIn
+                  ? 'Has portal access — signed in'
+                  : 'Invited — not yet signed in'
+              }
+              className={
+                hasSignedIn
+                  ? 'ml-2 size-[18px] shrink-0 [&>circle]:fill-emerald-500 [&>circle]:stroke-emerald-500 [&>path]:stroke-white'
+                  : 'ml-2 size-[18px] shrink-0 [&>circle]:fill-neutral-300 [&>circle]:stroke-neutral-300 [&>path]:stroke-white'
+              }
             />
           ) : null}
         </p>

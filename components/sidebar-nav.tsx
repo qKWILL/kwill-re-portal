@@ -98,11 +98,11 @@ export default function SidebarNav({
       {/* Mobile drawer */}
       {open && (
         <div
-          className="lg:hidden fixed inset-0 z-50 bg-black/40"
+          className="lg:hidden fixed top-16 left-0 right-0 bottom-0 z-50 bg-black/40"
           onClick={() => setOpen(false)}
         >
           <div
-            className="absolute top-16 left-0 bottom-0 w-64 bg-white flex flex-col"
+            className="absolute top-0 left-0 bottom-0 w-64 bg-white flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             <nav className="flex-1 p-4 space-y-1">

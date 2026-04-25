@@ -115,14 +115,21 @@ export const getRecentPublishedPosts = unstable_cache(
 
 // --- Team ------------------------------------------------------------------
 
+export type TeamMemberListRow = {
+  id: string;
+  name: string | null;
+  role: string | null;
+  img_url: string | null;
+  tags: string[] | null;
+  user_id: string | null;
+  last_sign_in_at: string | null;
+};
+
 export const getTeamMembersList = unstable_cache(
-  async () => {
+  async (): Promise<TeamMemberListRow[]> => {
     const supabase = createCacheClient();
-    const { data } = await supabase
-      .from("team_members")
-      .select("id, name, role, img_url, tags, user_id")
-      .order("name");
-    return data ?? [];
+    const { data } = await supabase.rpc("team_members_list_with_signin");
+    return (data ?? []) as TeamMemberListRow[];
   },
   ["portal-team-list"],
   { tags: [TAGS.team], revalidate: ONE_HOUR },

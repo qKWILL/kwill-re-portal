@@ -18,9 +18,14 @@ export default async function EditPropertyPage({
   if (!property) notFound()
   if (!isAdmin && property.created_by !== user.id) redirect('/properties')
 
-  const realEstateTeam = teamMembers.filter((m) =>
-    (m.tags ?? []).includes('real estate'),
-  )
+  const realEstateTeam = teamMembers
+    .filter((m) => (m.tags ?? []).includes('real estate'))
+    .map((m) => ({
+      id: m.id,
+      name: m.name ?? '',
+      role: m.role ?? '',
+      img_url: m.img_url,
+    }))
 
   return (
     <PropertyEditor

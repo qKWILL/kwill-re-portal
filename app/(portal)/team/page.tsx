@@ -22,6 +22,7 @@ export default async function TeamPage({
     img_url: row.img_url ?? null,
     tags: row.tags ?? [],
     user_id: row.user_id ?? null,
+    last_sign_in_at: row.last_sign_in_at ?? null,
   }))
 
   return (
