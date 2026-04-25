@@ -133,7 +133,7 @@ export default async function PropertyDetailPage({
   return (
     <main className="pb-16 bg-white">
       {/* Admin bar */}
-      <div className="sticky top-0 z-40 border-b border-neutral-200 bg-white/80 backdrop-blur">
+      <div className="sticky top-16 lg:top-0 z-30 border-b border-neutral-200 bg-white/80 backdrop-blur">
         <div className="max-w-[1200px] mx-auto px-6 py-3 flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-4 flex-wrap">
             <Link

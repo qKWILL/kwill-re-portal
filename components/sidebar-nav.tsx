@@ -75,9 +75,8 @@ export default function SidebarNav({
   return (
     <>
       {/* Mobile top bar */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-white border-b border-neutral-200 flex items-center px-4 h-16">
-        <div className="w-9 shrink-0" aria-hidden />
-        <Link href="/dashboard" prefetch className="flex-1 flex items-center justify-center">
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white border-b border-neutral-200 flex items-center justify-between px-4 h-16">
+        <Link href="/dashboard" prefetch className="flex items-center">
           <Image
             src="/KWILL Logo_Horizontal.png"
             alt="KWILL"
@@ -90,6 +89,7 @@ export default function SidebarNav({
         <button
           onClick={() => setOpen(!open)}
           className="p-2 rounded-md text-neutral-600 hover:bg-neutral-100 shrink-0"
+          aria-label={open ? 'Close menu' : 'Open menu'}
         >
           {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
         </button>
@@ -98,7 +98,7 @@ export default function SidebarNav({
       {/* Mobile drawer */}
       {open && (
         <div
-          className="lg:hidden fixed inset-0 z-30 bg-black/40"
+          className="lg:hidden fixed inset-0 z-50 bg-black/40"
           onClick={() => setOpen(false)}
         >
           <div
