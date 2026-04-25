@@ -1344,16 +1344,16 @@ export const EditorLinkSelector = ({
           variant="ghost"
         >
           <ExternalLinkIcon size={12} />
-          <p
+          <span
             className={cn(
-              "text-xs underline decoration-text-muted underline-offset-4",
+              "whitespace-nowrap text-xs underline decoration-text-muted underline-offset-4",
               {
                 "text-primary": editor.isActive("link"),
               }
             )}
           >
             Link
-          </p>
+          </span>
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-60 p-0" sideOffset={10}>
