@@ -10,16 +10,16 @@ export default async function LoginPage() {
   if (user) redirect('/dashboard')
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-neutral-50">
-      <div className="w-full max-w-md">
-        <div className="flex flex-col items-center mb-8">
+    <div className="min-h-screen flex items-center justify-center bg-background px-6">
+      <div className="w-full max-w-[420px]">
+        <div className="flex flex-col items-center mb-10">
           <Image
             src="/KWILL Logo_Horizontal.png"
             alt="KWILL Merchant Advisors"
             width={280}
             height={75}
             priority
-            className="h-14 w-auto"
+            className="h-12 w-auto"
           />
         </div>
         <LoginForm />
