@@ -49,7 +49,12 @@ const centerAspectCrop = (
     mediaHeight
   );
 
-const getCroppedPngImage = async (
+const MAX_OUTPUT_DIMENSION = 1200;
+const OUTPUT_TYPE = "image/jpeg";
+const OUTPUT_QUALITY = 0.9;
+const SHRINK_STEP = 0.9;
+
+const getCroppedImage = async (
   imageSrc: HTMLImageElement,
   scaleFactor: number,
   pixelCrop: PixelCrop,
@@ -62,33 +67,41 @@ const getCroppedPngImage = async (
     throw new Error("Context is null, this should never happen.");
   }
 
+  // pixelCrop is in on-screen pixels; size the output from the source image's
+  // natural pixels so the crop keeps the original resolution.
   const scaleX = imageSrc.naturalWidth / imageSrc.width;
   const scaleY = imageSrc.naturalHeight / imageSrc.height;
+  const sourceWidth = pixelCrop.width * scaleX;
+  const sourceHeight = pixelCrop.height * scaleY;
+  const outputScale =
+    Math.min(1, MAX_OUTPUT_DIMENSION / Math.max(sourceWidth, sourceHeight)) *
+    scaleFactor;
 
-  ctx.imageSmoothingEnabled = false;
-  canvas.width = pixelCrop.width;
-  canvas.height = pixelCrop.height;
+  canvas.width = Math.max(1, Math.round(sourceWidth * outputScale));
+  canvas.height = Math.max(1, Math.round(sourceHeight * outputScale));
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
 
   ctx.drawImage(
     imageSrc,
     pixelCrop.x * scaleX,
     pixelCrop.y * scaleY,
-    pixelCrop.width * scaleX,
-    pixelCrop.height * scaleY,
+    sourceWidth,
+    sourceHeight,
     0,
     0,
     canvas.width,
     canvas.height
   );
 
-  const croppedImageUrl = canvas.toDataURL("image/png");
+  const croppedImageUrl = canvas.toDataURL(OUTPUT_TYPE, OUTPUT_QUALITY);
   const response = await fetch(croppedImageUrl);
   const blob = await response.blob();
 
   if (blob.size > maxImageSize) {
-    return await getCroppedPngImage(
+    return await getCroppedImage(
       imageSrc,
-      scaleFactor * 0.9,
+      scaleFactor * SHRINK_STEP,
       pixelCrop,
       maxImageSize
     );
@@ -187,7 +200,7 @@ export const ImageCrop = ({
       return;
     }
 
-    const croppedImage = await getCroppedPngImage(
+    const croppedImage = await getCroppedImage(
       imgRef.current,
       1,
       completedCrop,
