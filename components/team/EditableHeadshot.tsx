@@ -70,10 +70,10 @@ export function EditableHeadshot({
     try {
       const supabase = createClient()
       const blob = dataUrlToBlob(cropped)
-      const key = `${folder ? `${folder}/` : ''}${Date.now()}.png`
+      const key = `${folder ? `${folder}/` : ''}${Date.now()}.jpg`
       const { error: uploadErr } = await supabase.storage
         .from(bucket)
-        .upload(key, blob, { upsert: true, contentType: 'image/png' })
+        .upload(key, blob, { upsert: true, contentType: 'image/jpeg' })
       if (uploadErr) {
         setError(uploadErr.message)
         return
