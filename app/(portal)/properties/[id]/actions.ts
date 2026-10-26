@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidatePath, updateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { TAGS } from '@/lib/cache-tags'
 import { getPortalSession } from '@/lib/auth'
@@ -47,11 +47,11 @@ export async function deleteProperty(propertyId: string) {
     }
   }
 
-  revalidateTag(TAGS.properties, 'max')
-  revalidateTag(TAGS.property(propertyId), 'max')
-  revalidateTag(TAGS.userDashboard(user.id), 'max')
+  updateTag(TAGS.properties)
+  updateTag(TAGS.property(propertyId))
+  updateTag(TAGS.userDashboard(user.id))
   if (before?.created_by && before.created_by !== user.id) {
-    revalidateTag(TAGS.userDashboard(before.created_by), 'max')
+    updateTag(TAGS.userDashboard(before.created_by))
   }
   revalidatePath('/properties')
   redirect('/properties')

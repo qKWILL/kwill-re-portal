@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
 import TeamClient, { type PortalTeamRow } from './team-client'
-import { getTeamMembersList } from '@/lib/cached-data'
+import { getTeamMembersList, getTeamTags } from '@/lib/cached-data'
 import { getPortalSession } from '@/lib/auth'
 
 export default async function TeamPage({
@@ -10,9 +10,10 @@ export default async function TeamPage({
   searchParams: Promise<{ view?: string }>
 }) {
   const { view } = await searchParams
-  const [{ user, isAdmin }, rows] = await Promise.all([
+  const [{ user, isAdmin }, rows, registeredTags] = await Promise.all([
     getPortalSession(),
     getTeamMembersList(),
+    getTeamTags().catch(() => null),
   ])
 
   const members: PortalTeamRow[] = rows.map((row) => ({
@@ -54,6 +55,7 @@ export default async function TeamPage({
         currentUserId={user.id}
         isAdmin={isAdmin}
         currentView={view === 'list' ? 'list' : 'grid'}
+        registeredTags={registeredTags}
       />
     </main>
   )

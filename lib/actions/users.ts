@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidateTag } from "next/cache";
+import { updateTag } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -161,7 +161,7 @@ export async function inviteUser(input: {
       .update({ user_id: userId })
       .eq("id", parsed.data.teamMemberId);
     if (linkErr) return { success: false, error: linkErr.message };
-    revalidateTag(TAGS.teamMember(parsed.data.teamMemberId), "max");
+    updateTag(TAGS.teamMember(parsed.data.teamMemberId));
   }
 
   await supabase.from("audit_log").insert({
@@ -173,8 +173,8 @@ export async function inviteUser(input: {
     performed_by: gate.session.user.id,
   });
 
-  revalidateTag(TAGS.users, "max");
-  revalidateTag(TAGS.team, "max");
+  updateTag(TAGS.users);
+  updateTag(TAGS.team);
   return { success: true, data: { userId } };
 }
 
@@ -242,7 +242,7 @@ export async function setUserRole(input: {
     performed_by: gate.session.user.id,
   });
 
-  revalidateTag(TAGS.users, "max");
+  updateTag(TAGS.users);
   return { success: true };
 }
 
@@ -267,9 +267,9 @@ export async function linkTeamMember(input: {
     .eq("id", input.teamMemberId);
   if (error) return { success: false, error: error.message };
 
-  revalidateTag(TAGS.users, "max");
-  revalidateTag(TAGS.team, "max");
-  revalidateTag(TAGS.teamMember(input.teamMemberId), "max");
+  updateTag(TAGS.users);
+  updateTag(TAGS.team);
+  updateTag(TAGS.teamMember(input.teamMemberId));
   return { success: true };
 }
 
@@ -308,9 +308,9 @@ export async function unlinkTeamMember(input: {
     .eq("id", input.teamMemberId);
   if (error) return { success: false, error: error.message };
 
-  revalidateTag(TAGS.users, "max");
-  revalidateTag(TAGS.team, "max");
-  revalidateTag(TAGS.teamMember(input.teamMemberId), "max");
+  updateTag(TAGS.users);
+  updateTag(TAGS.team);
+  updateTag(TAGS.teamMember(input.teamMemberId));
   return { success: true };
 }
 

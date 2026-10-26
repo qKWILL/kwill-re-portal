@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { CircleCheck, Pencil } from 'lucide-react'
+import { Check, CircleCheck, Pencil } from 'lucide-react'
 import type { PortalTeamCard } from './TeamMemberCard'
 
 type Props = {
@@ -11,6 +11,10 @@ type Props = {
   interactive: boolean
   hasAccount?: boolean
   hasSignedIn?: boolean
+  /** Bulk-edit mode: clicking toggles selection instead of opening the profile. */
+  selectable?: boolean
+  selected?: boolean
+  onToggle?: () => void
 }
 
 export function TeamMemberRow({
@@ -19,6 +23,9 @@ export function TeamMemberRow({
   interactive,
   hasAccount,
   hasSignedIn,
+  selectable = false,
+  selected = false,
+  onToggle,
 }: Props) {
   const tags = member.tags ?? []
   const shownTags = tags.slice(0, 3)
@@ -78,9 +85,32 @@ export function TeamMemberRow({
     </>
   )
 
+  const checkbox = selectable ? (
+    <span
+      aria-hidden
+      className={`flex size-5 flex-shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+        selected
+          ? 'bg-black border-black text-white'
+          : 'border-neutral-300 text-transparent'
+      }`}
+    >
+      <Check className="size-3" strokeWidth={3} />
+    </span>
+  ) : null
+
   return (
     <div className="relative group">
-      {interactive ? (
+      {selectable ? (
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-pressed={selected}
+          className="w-full text-left flex items-center gap-4 py-3 px-3 border-b border-neutral-100 hover:bg-neutral-50 transition-colors"
+        >
+          {checkbox}
+          {body}
+        </button>
+      ) : interactive ? (
         <Link
           href={`/team/${member.id}`}
           prefetch
@@ -93,7 +123,7 @@ export function TeamMemberRow({
           {body}
         </div>
       )}
-      {canEdit ? (
+      {canEdit && !selectable ? (
         <Link
           href={`/team/${member.id}/edit`}
           className="absolute top-1/2 right-3 -translate-y-1/2 p-1.5 rounded-full bg-white text-neutral-600 hover:text-neutral-900 border border-neutral-200 opacity-0 group-hover:opacity-100 transition-opacity"

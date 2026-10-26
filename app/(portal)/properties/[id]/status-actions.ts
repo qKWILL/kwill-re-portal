@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidatePath, updateTag } from 'next/cache'
 import { TAGS } from '@/lib/cache-tags'
 import { getPortalSession } from '@/lib/auth'
 import { fireMarketingRevalidation } from '@/lib/webhook'
@@ -49,10 +49,10 @@ export async function updatePropertyStatus(propertyId: string, status: string) {
     }
   }
 
-  revalidateTag(TAGS.properties, 'max')
-  revalidateTag(TAGS.property(propertyId), 'max')
+  updateTag(TAGS.properties)
+  updateTag(TAGS.property(propertyId))
   if (before?.created_by) {
-    revalidateTag(TAGS.userDashboard(before.created_by), 'max')
+    updateTag(TAGS.userDashboard(before.created_by))
   }
   revalidatePath(`/properties/${propertyId}`)
 }
