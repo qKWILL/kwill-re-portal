@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidatePath, updateTag } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { getPortalSession } from '@/lib/auth'
 import { TAGS } from '@/lib/cache-tags'
@@ -64,8 +64,8 @@ export async function renamePropertySlug(
       .insert({ property_id: propertyId, old_slug: oldSlug })
   }
 
-  revalidateTag(TAGS.properties, 'max')
-  revalidateTag(TAGS.property(propertyId), 'max')
+  updateTag(TAGS.properties)
+  updateTag(TAGS.property(propertyId))
   revalidatePath('/properties', 'layout')
 
   await fireMarketingRevalidation(supabase, {

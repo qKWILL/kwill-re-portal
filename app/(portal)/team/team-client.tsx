@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState, useTransition } from 'react'
 import { usePathname } from 'next/navigation'
 import {
   TeamMemberCard,
@@ -9,6 +9,10 @@ import {
 import { TeamMemberRow } from '@/components/team/TeamMemberRow'
 import AnimatedTabs from '@/components/ui/AnimatedTabs'
 import { ViewToggle, type ViewMode } from '@/components/ui/ViewToggle'
+import { BulkTagBar } from '@/components/team/BulkTagBar'
+import { WebsiteTabsPanel } from '@/components/team/WebsiteTabsPanel'
+import type { TeamTagRow } from '@/lib/cached-data'
+import { collectTags, normalizeTags } from '@/lib/utils/team-tags'
 
 export type PortalTeamRow = PortalTeamCard & {
   user_id: string | null
@@ -21,16 +25,23 @@ export default function TeamClient({
   currentUserId,
   isAdmin,
   currentView,
+  registeredTags,
 }: {
   members: PortalTeamRow[]
   currentUserId: string
   isAdmin: boolean
   currentView: ViewMode
+  /** null when team_tags couldn't be read. */
+  registeredTags: TeamTagRow[] | null
 }) {
   const pathname = usePathname()
   const [view, setViewState] = useState<ViewMode>(currentView)
   const [search, setSearch] = useState('')
   const [tag, setTag] = useState('all')
+  const [selecting, setSelecting] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(new Set())
+  // Owned here so leaving select mode can't unmount a save in flight.
+  const [isSaving, startSaving] = useTransition()
 
   const setView = useCallback(
     (next: ViewMode) => {
@@ -44,11 +55,28 @@ export default function TeamClient({
     [pathname],
   )
 
-  const allTags = useMemo(() => {
-    const set = new Set<string>()
-    members.forEach((m) => (m.tags ?? []).forEach((t) => set.add(t)))
-    return ['all', ...Array.from(set).sort()]
-  }, [members])
+  // Normalized so a legacy spelling ("Real Estate") can't show as a second tab.
+  const memberTags = useMemo(() => collectTags(members), [members])
+  const allTags = useMemo(() => ['all', ...memberTags], [memberTags])
+  // A bulk remove can take away the open tab's last holder; fall back to All.
+  const activeTag = tag === 'all' || memberTags.includes(tag) ? tag : 'all'
+
+  const pickerOptions = useMemo(
+    () =>
+      normalizeTags([...memberTags, ...(registeredTags ?? []).map((t) => t.name)]).sort(),
+    [memberTags, registeredTags],
+  )
+
+  const websiteTabs = useMemo(() => {
+    if (!registeredTags) return null
+    const byName = new Map(registeredTags.map((t) => [t.name, t]))
+    return pickerOptions.map((name) => ({
+      name,
+      label: byName.get(name)?.label ?? null,
+      count: members.filter((m) => normalizeTags(m.tags ?? []).includes(name)).length,
+      showOnSite: byName.get(name)?.show_on_site ?? false,
+    }))
+  }, [pickerOptions, registeredTags, members])
 
   const ordered = useMemo(() => {
     const selfIdx = members.findIndex((m) => m.user_id === currentUserId)
@@ -61,12 +89,35 @@ export default function TeamClient({
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
     return ordered.filter((m) => {
-      if (tag !== 'all' && !(m.tags ?? []).includes(tag)) return false
+      if (activeTag !== 'all' && !normalizeTags(m.tags ?? []).includes(activeTag)) return false
       if (!q) return true
       const hay = `${m.name} ${m.role} ${(m.tags ?? []).join(' ')}`.toLowerCase()
       return hay.includes(q)
     })
-  }, [ordered, tag, search])
+  }, [ordered, activeTag, search])
+
+  const toggleSelected = useCallback((id: string) => {
+    setSelectedIds((current) => {
+      const next = new Set(current)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
+
+  const selectShown = useCallback(() => {
+    setSelectedIds((current) => new Set([...current, ...filtered.map((m) => m.id)]))
+  }, [filtered])
+
+  const stopSelecting = useCallback(() => {
+    setSelecting(false)
+    setSelectedIds(new Set())
+  }, [])
+
+  const selectedMembers = useMemo(
+    () => members.filter((m) => selectedIds.has(m.id)),
+    [members, selectedIds],
+  )
 
   return (
     <>
@@ -74,7 +125,7 @@ export default function TeamClient({
         {allTags.length > 1 ? (
           <AnimatedTabs
             filters={allTags}
-            activeFilter={tag}
+            activeFilter={activeTag}
             onFilterChange={setTag}
             formatLabel={(f) =>
               f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)
@@ -84,6 +135,22 @@ export default function TeamClient({
           <div />
         )}
         <div className="flex items-center gap-3">
+          {isAdmin ? <WebsiteTabsPanel tags={websiteTabs} /> : null}
+          {isAdmin ? (
+            <button
+              type="button"
+              onClick={() => (selecting ? stopSelecting() : setSelecting(true))}
+              disabled={isSaving}
+              aria-pressed={selecting}
+              className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium border transition-colors disabled:opacity-50 ${
+                selecting
+                  ? 'bg-black text-white border-black hover:bg-neutral-800'
+                  : 'border-neutral-300 text-neutral-700 hover:bg-neutral-50'
+              }`}
+            >
+              {selecting ? 'Done editing tags' : 'Edit tags'}
+            </button>
+          ) : null}
           <input
             type="search"
             placeholder="Search…"
@@ -113,6 +180,9 @@ export default function TeamClient({
                 interactive={interactive}
                 hasAccount={!!m.user_id}
                 hasSignedIn={!!m.last_sign_in_at}
+                selectable={selecting}
+                selected={selectedIds.has(m.id)}
+                onToggle={() => toggleSelected(m.id)}
               />
             )
           })}
@@ -131,11 +201,31 @@ export default function TeamClient({
                 interactive={interactive}
                 hasAccount={!!m.user_id}
                 hasSignedIn={!!m.last_sign_in_at}
+                selectable={selecting}
+                selected={selectedIds.has(m.id)}
+                onToggle={() => toggleSelected(m.id)}
               />
             )
           })}
         </div>
       )}
+
+      {selecting ? (
+        <>
+          {/* Keeps the last row clear of the fixed bar. */}
+          <div aria-hidden className="h-32" />
+          <BulkTagBar
+            selected={selectedMembers}
+            tagOptions={pickerOptions}
+            isPending={isSaving}
+            startTransition={startSaving}
+            shownCount={filtered.length}
+            onSelectShown={selectShown}
+            onClear={() => setSelectedIds(new Set())}
+            onDone={stopSelecting}
+          />
+        </>
+      ) : null}
     </>
   )
 }

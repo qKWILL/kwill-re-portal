@@ -2,9 +2,12 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { revalidateTag } from 'next/cache'
+import { updateTag } from 'next/cache'
 import { z } from 'zod'
 import type { ExperienceEntry } from '@/lib/utils/team-experience'
+import { applyTagChanges, normalizeTags } from '@/lib/utils/team-tags'
+import { getPortalSession } from '@/lib/auth'
+import { fireMarketingRevalidation } from '@/lib/webhook'
 import { TAGS } from '@/lib/cache-tags'
 
 export type TeamMemberFormData = {
@@ -97,7 +100,7 @@ export async function saveTeamMember(
       // Legacy TEXT column — zeroed out. team_experience rows are the source of truth now.
       experience: null,
       linkedin: data.linkedin,
-      tags: data.tags.filter((t) => t.trim()),
+      tags: normalizeTags(data.tags),
       img_url: data.img_url,
     })
     .eq('id', data.id)
@@ -174,8 +177,8 @@ export async function saveTeamMember(
     // Webhook failure should not break the save
   }
 
-  revalidateTag(TAGS.team, 'max')
-  revalidateTag(TAGS.teamMember(data.id), 'max')
+  updateTag(TAGS.team)
+  updateTag(TAGS.teamMember(data.id))
 
   redirect(`/team`)
 }
@@ -213,7 +216,7 @@ export async function createTeamMember(
       role: data.role || '',
       bio: data.bio || '',
       linkedin: data.linkedin || null,
-      tags: data.tags.filter((t) => t.trim()),
+      tags: normalizeTags(data.tags),
       img_url: data.img_url || '',
       user_id: null,
     })
@@ -295,8 +298,108 @@ export async function createTeamMember(
     // Webhook failure should not block the save
   }
 
-  revalidateTag(TAGS.team, 'max')
-  revalidateTag(TAGS.teamMember(inserted.id), 'max')
+  updateTag(TAGS.team)
+  updateTag(TAGS.teamMember(inserted.id))
 
   return { success: true, id: inserted.id }
+}
+
+const bulkTagsSchema = z.object({
+  memberIds: z
+    .array(z.string().uuid())
+    .min(1, 'Select at least one person')
+    .max(200),
+  add: z.array(z.string().max(60)).max(20),
+  remove: z.array(z.string().max(60)).max(20),
+})
+
+export type BulkUpdateTeamTagsResult =
+  | { success: true; changed: number }
+  | { success: false; error: string }
+
+export async function bulkUpdateTeamTags(input: {
+  memberIds: string[]
+  add: string[]
+  remove: string[]
+}): Promise<BulkUpdateTeamTagsResult> {
+  const parsed = bulkTagsSchema.safeParse(input)
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? 'Invalid input',
+    }
+  }
+  const add = normalizeTags(parsed.data.add)
+  const remove = normalizeTags(parsed.data.remove)
+  if (add.length === 0 && remove.length === 0) {
+    return { success: false, error: 'Choose a tag to add or remove' }
+  }
+
+  const { user, isAdmin } = await getPortalSession()
+  if (!isAdmin) {
+    return { success: false, error: 'Only admins can edit tags in bulk' }
+  }
+
+  const supabase = await createClient()
+  const { data: rows, error: readError } = await supabase
+    .from('team_members')
+    .select('*')
+    .in('id', parsed.data.memberIds)
+  if (readError) return { success: false, error: readError.message }
+
+  // Only write rows whose tags actually change; a legacy spelling alone
+  // ("Asset Management") is not a change worth an audit entry.
+  const changes = (rows ?? [])
+    .map((before) => ({
+      before,
+      tags: applyTagChanges(before.tags ?? [], add, remove),
+    }))
+    .filter(
+      ({ before, tags }) =>
+        normalizeTags(before.tags ?? []).join('|') !== tags.join('|'),
+    )
+
+  const results = await Promise.all(
+    changes.map(async ({ before, tags }) => {
+      const { data: after, error } = await supabase
+        .from('team_members')
+        .update({ tags })
+        .eq('id', before.id)
+        .select('*')
+        .single()
+      if (error) return { id: before.id as string, ok: false }
+
+      await supabase.from('audit_log').insert({
+        table_name: 'team_members',
+        record_id: before.id,
+        action: 'update',
+        before,
+        after,
+        performed_by: user.id,
+      })
+      return { id: before.id as string, ok: true }
+    }),
+  )
+
+  const changedIds = results.filter((r) => r.ok).map((r) => r.id)
+  const failed = results.length - changedIds.length
+
+  if (changedIds.length > 0) {
+    updateTag(TAGS.team)
+    changedIds.forEach((id) => updateTag(TAGS.teamMember(id)))
+    await fireMarketingRevalidation(supabase, {
+      event: 'update',
+      table: 'team_members',
+      record_id: changedIds[0],
+      path: '/team',
+    })
+  }
+
+  if (failed > 0) {
+    return {
+      success: false,
+      error: `Saved ${changedIds.length}, but ${failed} could not be saved. Try again.`,
+    }
+  }
+  return { success: true, changed: changedIds.length }
 }

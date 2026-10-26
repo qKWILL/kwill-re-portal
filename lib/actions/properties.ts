@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidatePath, updateTag } from 'next/cache'
 import { z } from 'zod'
 import { TAGS } from '@/lib/cache-tags'
 import { getPortalSession } from '@/lib/auth'
@@ -333,11 +333,11 @@ export async function saveProperty(
     })
   }
 
-  revalidateTag(TAGS.properties, 'max')
-  if (propertyId) revalidateTag(TAGS.property(propertyId), 'max')
-  revalidateTag(TAGS.userDashboard(user.id), 'max')
+  updateTag(TAGS.properties)
+  if (propertyId) updateTag(TAGS.property(propertyId))
+  updateTag(TAGS.userDashboard(user.id))
   if (priorOwnerId && priorOwnerId !== user.id) {
-    revalidateTag(TAGS.userDashboard(priorOwnerId), 'max')
+    updateTag(TAGS.userDashboard(priorOwnerId))
   }
   revalidatePath('/properties', 'layout')
 

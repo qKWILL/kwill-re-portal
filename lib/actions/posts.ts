@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { revalidateTag } from "next/cache";
+import { updateTag } from "next/cache";
 import { z } from "zod";
 import { TAGS } from "@/lib/cache-tags";
 
@@ -250,9 +250,9 @@ export async function savePost(
     }
   }
 
-  revalidateTag(TAGS.posts, 'max');
-  if (postId) revalidateTag(TAGS.post(postId), 'max');
-  revalidateTag(TAGS.userDashboard(user.id), 'max');
+  updateTag(TAGS.posts);
+  if (postId) updateTag(TAGS.post(postId));
+  updateTag(TAGS.userDashboard(user.id));
 
   return { success: true, id: postId! };
 }
@@ -294,11 +294,11 @@ export async function deletePost(postId: string) {
     });
   }
 
-  revalidateTag(TAGS.posts, 'max');
-  revalidateTag(TAGS.post(postId), 'max');
-  revalidateTag(TAGS.userDashboard(user.id), 'max');
+  updateTag(TAGS.posts);
+  updateTag(TAGS.post(postId));
+  updateTag(TAGS.userDashboard(user.id));
   if (before?.created_by && before.created_by !== user.id) {
-    revalidateTag(TAGS.userDashboard(before.created_by), 'max');
+    updateTag(TAGS.userDashboard(before.created_by));
   }
 
   redirect("/posts");

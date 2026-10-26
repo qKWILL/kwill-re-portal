@@ -149,6 +149,31 @@ export const getTeamMemberById = unstable_cache(
   { tags: [TAGS.team], revalidate: ONE_HOUR },
 );
 
+export type TeamTagRow = {
+  name: string;
+  label: string | null;
+  show_on_site: boolean;
+  sort_order: number;
+};
+
+// Registered tags and their website visibility. Throws on a failed read so
+// unstable_cache never stores a failure as "no tabs"; callers show it as
+// unavailable instead.
+export const getTeamTags = unstable_cache(
+  async (): Promise<TeamTagRow[]> => {
+    const supabase = createCacheClient();
+    const { data, error } = await supabase
+      .from("team_tags")
+      .select("name, label, show_on_site, sort_order")
+      .order("sort_order")
+      .order("name");
+    if (error) throw new Error(`team_tags read failed: ${error.message}`);
+    return data as TeamTagRow[];
+  },
+  ["portal-team-tags"],
+  { tags: [TAGS.team], revalidate: ONE_HOUR },
+);
+
 // --- Submissions ----------------------------------------------------------
 
 export type SubmissionRow = {

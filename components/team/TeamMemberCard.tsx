@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { CircleCheck, Pencil } from 'lucide-react'
+import { Check, CircleCheck, Pencil } from 'lucide-react'
 
 export type PortalTeamCard = {
   id: string
@@ -18,6 +18,10 @@ type Props = {
   interactive: boolean
   hasAccount?: boolean
   hasSignedIn?: boolean
+  /** Bulk-edit mode: clicking toggles selection instead of opening the profile. */
+  selectable?: boolean
+  selected?: boolean
+  onToggle?: () => void
 }
 
 export function TeamMemberCard({
@@ -26,6 +30,9 @@ export function TeamMemberCard({
   interactive,
   hasAccount,
   hasSignedIn,
+  selectable = false,
+  selected = false,
+  onToggle,
 }: Props) {
   const inner = (
     <>
@@ -70,7 +77,16 @@ export function TeamMemberCard({
 
   return (
     <div className="relative group">
-      {interactive ? (
+      {selectable ? (
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-pressed={selected}
+          className={`block w-full text-left transition-opacity ${selected ? '' : 'opacity-70 hover:opacity-100'}`}
+        >
+          {inner}
+        </button>
+      ) : interactive ? (
         <Link href={`/team/${member.id}`} prefetch className="block">
           {inner}
         </Link>
@@ -79,7 +95,19 @@ export function TeamMemberCard({
           {inner}
         </div>
       )}
-      {canEdit ? (
+      {selectable ? (
+        <span
+          aria-hidden
+          className={`pointer-events-none absolute top-3 left-3 flex size-6 items-center justify-center rounded-full border-2 transition-colors ${
+            selected
+              ? 'bg-black border-black text-white'
+              : 'bg-white/90 border-white text-transparent'
+          }`}
+        >
+          <Check className="size-3.5" strokeWidth={3} />
+        </span>
+      ) : null}
+      {canEdit && !selectable ? (
         <Link
           href={`/team/${member.id}/edit`}
           className="absolute top-3 right-3 p-1.5 rounded-full bg-white/90 backdrop-blur text-neutral-600 hover:text-neutral-900 hover:bg-white transition-colors opacity-0 group-hover:opacity-100"

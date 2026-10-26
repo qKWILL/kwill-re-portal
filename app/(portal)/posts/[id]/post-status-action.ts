@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidatePath, updateTag } from 'next/cache'
 import { TAGS } from '@/lib/cache-tags'
 import { getPortalSession } from '@/lib/auth'
 
@@ -47,10 +47,10 @@ export async function updatePostStatus(postId: string, status: string) {
     }).catch(() => {})
   }
 
-  revalidateTag(TAGS.posts, 'max')
-  revalidateTag(TAGS.post(postId), 'max')
+  updateTag(TAGS.posts)
+  updateTag(TAGS.post(postId))
   if (before?.created_by) {
-    revalidateTag(TAGS.userDashboard(before.created_by), 'max')
+    updateTag(TAGS.userDashboard(before.created_by))
   }
   revalidatePath(`/posts/${postId}`)
 }

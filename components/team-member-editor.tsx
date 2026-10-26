@@ -14,7 +14,9 @@ import { EditableText } from '@/components/properties/editable/EditableText'
 import { EditableRichText } from '@/components/properties/editable/EditableRichText'
 import { EditableExperience } from '@/components/team/editable/EditableExperience'
 import { EditableHeadshot } from '@/components/team/EditableHeadshot'
+import { TagPicker } from '@/components/team/TagPicker'
 import { bioToDraft, draftToBio } from '@/lib/utils/team-bio'
+import { normalizeTags } from '@/lib/utils/team-tags'
 import type { ExperienceEntry } from '@/lib/utils/team-experience'
 import type { PortalRole } from '@/lib/auth'
 import {
@@ -47,11 +49,13 @@ export default function TeamMemberEditor({
   viewerIsAdmin = false,
   viewerIsSuperAdmin = false,
   portalAccess,
+  tagOptions = [],
 }: {
   member: InitialMember | null
   viewerIsAdmin?: boolean
   viewerIsSuperAdmin?: boolean
   portalAccess?: PortalAccessState
+  tagOptions?: string[]
 }) {
   const isCreating = !member?.id
   const router = useRouter()
@@ -66,19 +70,17 @@ export default function TeamMemberEditor({
   )
   const [linkedin, setLinkedin] = useState(member?.linkedin ?? '')
   const [imgUrl, setImgUrl] = useState(member?.img_url ?? '')
-  const [tags, setTags] = useState<string[]>(member?.tags ?? [])
-  const [tagInput, setTagInput] = useState('')
+  const [tags, setTags] = useState<string[]>(() =>
+    normalizeTags(member?.tags ?? []),
+  )
+  const pickerOptions = normalizeTags([...tagOptions, ...tags]).sort()
 
   const [linkedinModalOpen, setLinkedinModalOpen] = useState(false)
   const [linkedinDraft, setLinkedinDraft] = useState('')
 
-  function addTag(e: React.KeyboardEvent) {
-    if (e.key === 'Enter' && tagInput.trim()) {
-      e.preventDefault()
-      const v = tagInput.trim()
-      if (!tags.includes(v)) setTags([...tags, v])
-      setTagInput('')
-    }
+  // Adding never removes: tags come off only through the chip's ×.
+  function addTag(tag: string) {
+    setTags((current) => normalizeTags([...current, tag]))
   }
 
   function removeTag(tag: string) {
@@ -274,12 +276,12 @@ export default function TeamMemberEditor({
               </span>
             ))}
           </div>
-          <input
-            value={tagInput}
-            onChange={(e) => setTagInput(e.target.value)}
-            onKeyDown={addTag}
-            placeholder="Type a tag and press Enter…"
-            className="w-full sm:w-80 border border-neutral-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-400"
+          <TagPicker
+            options={pickerOptions}
+            selected={tags}
+            onPick={addTag}
+            canShowOnSite={viewerIsAdmin}
+            label="Add tag"
           />
         </section>
       </div>
