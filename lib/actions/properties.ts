@@ -6,7 +6,7 @@ import { z } from 'zod'
 import { TAGS } from '@/lib/cache-tags'
 import { getPortalSession } from '@/lib/auth'
 import { fireMarketingRevalidation } from '@/lib/webhook'
-import type { SupabaseClient } from '@supabase/supabase-js'
+import { generateUniqueSlug, recordOldSlug, slugToReplacePlaceholder } from '@/lib/property-slug'
 
 const draftSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -107,31 +107,6 @@ async function persistSpaces(
     }))
   if (rows.length > 0) {
     await supabase.from('property_spaces').insert(rows)
-  }
-}
-
-function generateSlug(title: string) {
-  return title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || `property-${Date.now()}`
-}
-
-async function generateUniqueSlug(
-  supabase: SupabaseClient,
-  title: string,
-): Promise<string> {
-  const base = generateSlug(title)
-  let candidate = base
-  let suffix = 2
-  while (true) {
-    const { data } = await supabase
-      .from('properties')
-      .select('id')
-      .eq('slug', candidate)
-      .limit(1)
-      .maybeSingle()
-    if (!data) return candidate
-    candidate = `${base}-${suffix}`
-    suffix += 1
-    if (suffix > 50) return `${base}-${Date.now()}`
   }
 }
 
@@ -251,7 +226,7 @@ export async function saveProperty(
     loopnet_url: data.loopnet_url || null,
   }
 
-  const payload: Record<string, any> = {
+  const payload: Record<string, unknown> = {
     title: data.title,
     summary: data.summary || null,
     description: data.description || null,
@@ -273,6 +248,8 @@ export async function saveProperty(
   let propertyId = data.id
   let priorOwnerId: string | null = null
   let propertySlug: string | null = null
+  let oldSlug: string | null = null
+  let wasActive = false
 
   if (data.id) {
     const { data: before } = await supabase.from('properties').select('*').eq('id', data.id).single()
@@ -283,10 +260,21 @@ export async function saveProperty(
 
     priorOwnerId = before.created_by
     propertySlug = before.slug ?? null
+    wasActive = before.status === 'active'
 
-    // Slug is locked after create. Title edits do NOT change the URL.
+    // Slug is locked once real: title edits do NOT change the URL. The one
+    // exception is the draft-<timestamp> placeholder from an early photo
+    // upload, which gets its real slug on the first save with a title.
+    const realSlug = await slugToReplacePlaceholder(supabase, before.slug, data.title)
+    if (realSlug) {
+      oldSlug = propertySlug
+      propertySlug = realSlug
+      payload.slug = realSlug
+    }
+
     const { error } = await supabase.from('properties').update(payload).eq('id', data.id)
     if (error) return { success: false, errors: { _: error.message } }
+    if (oldSlug) await recordOldSlug(data.id, oldSlug)
     const { data: after } = await supabase.from('properties').select('*').eq('id', data.id).single()
     await supabase.from('audit_log').insert({
       table_name: 'properties', record_id: data.id, action: 'update',
@@ -323,12 +311,15 @@ export async function saveProperty(
     await persistSpaces(supabase, newProp.id, data.spaces ?? [])
   }
 
-  if (propertyId && status === 'active') {
+  // Unpublishing from the form (active -> draft/pending/sold/leased) must
+  // reach the site too, or it keeps serving the cached listing.
+  if (propertyId && (status === 'active' || wasActive)) {
     await fireMarketingRevalidation(supabase, {
       event: data.id ? 'update' : 'publish',
       table: 'properties',
       record_id: propertyId,
       slug: propertySlug,
+      old_slug: oldSlug,
       path: '/properties',
     })
   }

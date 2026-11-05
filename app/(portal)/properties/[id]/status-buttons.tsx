@@ -64,6 +64,7 @@ export default function StatusButtons({
 }) {
   const [pending, setPending] = useState<Transition | null>(null)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const label = STATUS_LABEL[currentStatus] ?? currentStatus
   const styles =
@@ -75,8 +76,13 @@ export default function StatusButtons({
   async function handleConfirm() {
     if (!pending) return
     setLoading(true)
-    await updatePropertyStatus(propertyId, pending.next)
+    setError(null)
+    const result = await updatePropertyStatus(propertyId, pending.next)
     setLoading(false)
+    if (result.error) {
+      setError(result.error)
+      return
+    }
     setPending(null)
   }
 
@@ -114,7 +120,10 @@ export default function StatusButtons({
       <Dialog
         open={!!pending}
         onOpenChange={(open) => {
-          if (!open && !loading) setPending(null)
+          if (!open && !loading) {
+            setPending(null)
+            setError(null)
+          }
         }}
       >
         <DialogContent>
@@ -131,10 +140,18 @@ export default function StatusButtons({
               .
             </DialogDescription>
           </DialogHeader>
+          {error ? (
+            <p role="alert" className="text-sm text-red-600">
+              {error}
+            </p>
+          ) : null}
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setPending(null)}
+              onClick={() => {
+                setPending(null)
+                setError(null)
+              }}
               disabled={loading}
             >
               Cancel
