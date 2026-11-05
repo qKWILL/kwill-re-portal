@@ -5,13 +5,14 @@ import { redirect } from "next/navigation";
 import { updateTag } from "next/cache";
 import { z } from "zod";
 import { TAGS } from "@/lib/cache-tags";
+import { fireMarketingRevalidation } from "@/lib/webhook";
 
 const draftSchema = z.object({
   title: z.string().min(1, "Title is required"),
   type: z.string().min(1, "Post type is required"),
 });
 
-const publishSchemas: Record<string, z.ZodObject<any>> = {
+const publishSchemas: Record<string, z.ZodObject<z.ZodRawShape>> = {
   blog: z.object({
     title: z.string().min(1, "Title is required"),
     type: z.literal("blog"),
@@ -132,6 +133,7 @@ export async function savePost(
   };
 
   let postId = data.id;
+  let wasPublished = false;
 
   if (data.id) {
     const { data: roleRow } = await supabase
@@ -150,6 +152,7 @@ export async function savePost(
     if (!before) return { success: false, errors: { _: "Post not found" } };
     if (!isAdmin && before.created_by !== user.id)
       return { success: false, errors: { _: "Not authorized" } };
+    wasPublished = before.status === "published";
 
     // Preserve the original publish date. Only stamp `date` when this save
     // is the *first* time the post becomes published (no prior date set).
@@ -206,48 +209,15 @@ export async function savePost(
     });
   }
 
-  // Webhook on publish
-  if (status === "published") {
-    const { data: config } = await supabase
-      .from("app_config")
-      .select("key, value")
-      .in("key", ["revalidation_url", "webhook_secret"]);
-    const configMap = Object.fromEntries(
-      (config ?? []).map((r) => [r.key, r.value]),
-    );
-    if (configMap.revalidation_url && configMap.webhook_secret) {
-      const body = JSON.stringify({
-        event: "publish",
-        table: "posts",
-        record_id: postId,
-        path: "/news",
-        timestamp: new Date().toISOString(),
-      });
-      const encoder = new TextEncoder();
-      const cryptoKey = await crypto.subtle.importKey(
-        "raw",
-        encoder.encode(configMap.webhook_secret),
-        { name: "HMAC", hash: "SHA-256" },
-        false,
-        ["sign"],
-      );
-      const signature = await crypto.subtle.sign(
-        "HMAC",
-        cryptoKey,
-        encoder.encode(body),
-      );
-      const sigHex = Array.from(new Uint8Array(signature))
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join("");
-      await fetch(configMap.revalidation_url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Webhook-Signature": sigHex,
-        },
-        body,
-      }).catch(() => {});
-    }
+  // Webhook on publish, and on unpublish from the form (published -> draft),
+  // so the site stops serving a post the editor took down.
+  if (postId && (status === "published" || wasPublished)) {
+    await fireMarketingRevalidation({
+      event: status === "published" ? "publish" : "unpublish",
+      table: "posts",
+      record_id: postId,
+      path: "/news",
+    });
   }
 
   updateTag(TAGS.posts);
@@ -292,6 +262,16 @@ export async function deletePost(postId: string) {
       after: null,
       performed_by: user.id,
     });
+
+    // Drafts never reach the site, so only a published post needs this.
+    if (before?.status === "published") {
+      await fireMarketingRevalidation({
+        event: "delete",
+        table: "posts",
+        record_id: postId,
+        path: "/news",
+      });
+    }
   }
 
   updateTag(TAGS.posts);

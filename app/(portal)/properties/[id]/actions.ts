@@ -37,7 +37,7 @@ export async function deleteProperty(propertyId: string) {
     // Only notify the marketing site for properties that were live. Drafts
     // don't appear there, so deleting one doesn't need a revalidation.
     if (before?.status === 'active') {
-      await fireMarketingRevalidation(supabase, {
+      await fireMarketingRevalidation({
         event: 'update',
         table: 'properties',
         record_id: propertyId,

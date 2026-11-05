@@ -130,52 +130,13 @@ export async function saveTeamMember(
     performed_by: user.id,
   })
 
-  try {
-    const { data: config } = await supabase
-      .from('app_config')
-      .select('key, value')
-      .in('key', ['revalidation_url', 'webhook_secret'])
-    const configMap = Object.fromEntries(
-      (config ?? []).map((r) => [r.key, r.value]),
-    )
-
-    if (configMap.revalidation_url && configMap.webhook_secret) {
-      const body = JSON.stringify({
-        event: 'update',
-        table: 'team_members',
-        record_id: data.id,
-        path: '/team',
-        timestamp: new Date().toISOString(),
-      })
-      const encoder = new TextEncoder()
-      const cryptoKey = await crypto.subtle.importKey(
-        'raw',
-        encoder.encode(configMap.webhook_secret),
-        { name: 'HMAC', hash: 'SHA-256' },
-        false,
-        ['sign'],
-      )
-      const signature = await crypto.subtle.sign(
-        'HMAC',
-        cryptoKey,
-        encoder.encode(body),
-      )
-      const sigHex = Array.from(new Uint8Array(signature))
-        .map((b) => b.toString(16).padStart(2, '0'))
-        .join('')
-
-      await fetch(configMap.revalidation_url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Webhook-Signature': sigHex,
-        },
-        body,
-      }).catch(() => {})
-    }
-  } catch {
-    // Webhook failure should not break the save
-  }
+  // Logs and never throws, so a webhook failure doesn't break the save.
+  await fireMarketingRevalidation({
+    event: 'update',
+    table: 'team_members',
+    record_id: data.id,
+    path: '/team',
+  })
 
   updateTag(TAGS.team)
   updateTag(TAGS.teamMember(data.id))
@@ -253,50 +214,12 @@ export async function createTeamMember(
     performed_by: user.id,
   })
 
-  try {
-    const { data: config } = await supabase
-      .from('app_config')
-      .select('key, value')
-      .in('key', ['revalidation_url', 'webhook_secret'])
-    const configMap = Object.fromEntries(
-      (config ?? []).map((r) => [r.key, r.value]),
-    )
-    if (configMap.revalidation_url && configMap.webhook_secret) {
-      const body = JSON.stringify({
-        event: 'create',
-        table: 'team_members',
-        record_id: inserted.id,
-        path: '/team',
-        timestamp: new Date().toISOString(),
-      })
-      const encoder = new TextEncoder()
-      const cryptoKey = await crypto.subtle.importKey(
-        'raw',
-        encoder.encode(configMap.webhook_secret),
-        { name: 'HMAC', hash: 'SHA-256' },
-        false,
-        ['sign'],
-      )
-      const signature = await crypto.subtle.sign(
-        'HMAC',
-        cryptoKey,
-        encoder.encode(body),
-      )
-      const sigHex = Array.from(new Uint8Array(signature))
-        .map((b) => b.toString(16).padStart(2, '0'))
-        .join('')
-      await fetch(configMap.revalidation_url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Webhook-Signature': sigHex,
-        },
-        body,
-      }).catch(() => {})
-    }
-  } catch {
-    // Webhook failure should not block the save
-  }
+  await fireMarketingRevalidation({
+    event: 'create',
+    table: 'team_members',
+    record_id: inserted.id,
+    path: '/team',
+  })
 
   updateTag(TAGS.team)
   updateTag(TAGS.teamMember(inserted.id))
@@ -387,7 +310,7 @@ export async function bulkUpdateTeamTags(input: {
   if (changedIds.length > 0) {
     updateTag(TAGS.team)
     changedIds.forEach((id) => updateTag(TAGS.teamMember(id)))
-    await fireMarketingRevalidation(supabase, {
+    await fireMarketingRevalidation({
       event: 'update',
       table: 'team_members',
       record_id: changedIds[0],

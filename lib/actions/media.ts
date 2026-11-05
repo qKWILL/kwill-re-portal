@@ -13,7 +13,7 @@ export async function revalidatePropertyCache(propertyId?: string) {
   if (propertyId) {
     const supabase = await createClient()
     const slug = await fetchPropertySlug(supabase, propertyId)
-    await fireMarketingRevalidation(supabase, {
+    await fireMarketingRevalidation({
       event: 'media',
       table: 'properties',
       record_id: propertyId,

@@ -1,7 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 type RevalidatePayload = {
-  event: 'publish' | 'update' | 'media' | 'status_change'
+  event: 'publish' | 'unpublish' | 'create' | 'update' | 'delete' | 'media' | 'status_change'
   table: 'properties' | 'posts' | 'team_members'
   record_id: string
   slug?: string | null
@@ -10,14 +11,30 @@ type RevalidatePayload = {
   timestamp: string
 }
 
+// Tells the marketing site to drop its cached copy of this content. Failures
+// are logged, never thrown: the CMS save has already succeeded, and a missed
+// webhook only leaves the site stale until its cache expires.
 export async function fireMarketingRevalidation(
-  supabase: SupabaseClient,
   payload: Omit<RevalidatePayload, 'timestamp'>,
 ): Promise<void> {
-  const { data: config } = await supabase
+  try {
+    await sendRevalidation(payload)
+  } catch (err) {
+    console.error(`Marketing revalidation failed for ${payload.table} ${payload.record_id}:`, err)
+  }
+}
+
+async function sendRevalidation(payload: Omit<RevalidatePayload, 'timestamp'>): Promise<void> {
+  // app_config holds the webhook secret, so it is read with the service-role
+  // client, never the editor's session.
+  const { data: config, error: configError } = await createAdminClient()
     .from('app_config')
     .select('key, value')
     .in('key', ['revalidation_url', 'webhook_secret', 'vercel_protection_bypass'])
+  if (configError) {
+    console.error('Marketing revalidation skipped: app_config read failed:', configError)
+    return
+  }
 
   const configMap = Object.fromEntries((config ?? []).map((r: { key: string; value: string }) => [r.key, r.value]))
   if (!configMap.revalidation_url || !configMap.webhook_secret) return
@@ -51,12 +68,18 @@ export async function fireMarketingRevalidation(
   }
   if (bypass) headers['x-vercel-protection-bypass'] = bypass
 
+  // Fan out to every URL; one failing must not block the others.
   await Promise.all(
-    urls.map((url: string) =>
-      fetch(url, { method: 'POST', headers, body }).catch(() => {
-        // Best-effort fan-out: failure of one URL must not block the others.
-      }),
-    ),
+    urls.map(async (url: string) => {
+      try {
+        const res = await fetch(url, { method: 'POST', headers, body })
+        if (!res.ok) {
+          console.error(`Marketing revalidation to ${url} returned ${res.status} for ${payload.table} ${payload.record_id}`)
+        }
+      } catch (err) {
+        console.error(`Marketing revalidation to ${url} failed for ${payload.table} ${payload.record_id}:`, err)
+      }
+    }),
   )
 }
 
