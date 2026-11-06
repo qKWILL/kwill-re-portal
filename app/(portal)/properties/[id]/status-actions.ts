@@ -9,10 +9,15 @@ import { recordOldSlug, slugToReplacePlaceholder } from '@/lib/property-slug'
 
 export type UpdatePropertyStatusResult = { error: string | null }
 
+// The statuses in lib/types/property.ts. Anything else from the client is refused.
+const PROPERTY_STATUSES = new Set(['draft', 'active', 'pending', 'sold', 'leased'])
+
 export async function updatePropertyStatus(
   propertyId: string,
   status: string,
 ): Promise<UpdatePropertyStatusResult> {
+  if (!PROPERTY_STATUSES.has(status)) return { error: 'Unknown status.' }
+
   const supabase = await createClient()
   const { user, isAdmin } = await getPortalSession()
 
@@ -57,7 +62,7 @@ export async function updatePropertyStatus(
     // marketing site invalidate its slug-keyed detail-page cache; without it
     // only the listing tag refreshes.
     if (status === 'active' || before.status === 'active') {
-      await fireMarketingRevalidation(supabase, {
+      await fireMarketingRevalidation({
         event: 'status_change',
         table: 'properties',
         record_id: propertyId,
@@ -75,5 +80,9 @@ export async function updatePropertyStatus(
   }
   revalidatePath(`/properties/${propertyId}`)
 
-  return { error: error ? error.message : null }
+  if (error) {
+    console.error(`Property status update failed for ${propertyId}:`, error)
+    return { error: 'Could not update the status. Try again.' }
+  }
+  return { error: null }
 }

@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath, updateTag } from 'next/cache'
 import { TAGS } from '@/lib/cache-tags'
 import { getPortalSession } from '@/lib/auth'
+import { fireMarketingRevalidation } from '@/lib/webhook'
 
 export async function updatePostStatus(postId: string, status: string) {
   const supabase = await createClient()
@@ -26,26 +27,12 @@ export async function updatePostStatus(postId: string, status: string) {
     before, after, performed_by: user.id,
   })
 
-  const { data: config } = await supabase
-    .from('app_config').select('key, value').in('key', ['revalidation_url', 'webhook_secret'])
-  const configMap = Object.fromEntries((config ?? []).map(r => [r.key, r.value]))
-  if (configMap.revalidation_url && configMap.webhook_secret) {
-    const body = JSON.stringify({
-      event: status === 'published' ? 'publish' : 'unpublish',
-      table: 'posts', record_id: postId,
-      path: '/news', timestamp: new Date().toISOString(),
-    })
-    const encoder = new TextEncoder()
-    const cryptoKey = await crypto.subtle.importKey('raw', encoder.encode(configMap.webhook_secret),
-      { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
-    const signature = await crypto.subtle.sign('HMAC', cryptoKey, encoder.encode(body))
-    const sigHex = Array.from(new Uint8Array(signature)).map(b => b.toString(16).padStart(2, '0')).join('')
-    await fetch(configMap.revalidation_url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Webhook-Signature': sigHex },
-      body,
-    }).catch(() => {})
-  }
+  await fireMarketingRevalidation({
+    event: status === 'published' ? 'publish' : 'unpublish',
+    table: 'posts',
+    record_id: postId,
+    path: '/news',
+  })
 
   updateTag(TAGS.posts)
   updateTag(TAGS.post(postId))

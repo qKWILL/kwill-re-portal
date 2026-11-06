@@ -314,7 +314,7 @@ export async function saveProperty(
   // Unpublishing from the form (active -> draft/pending/sold/leased) must
   // reach the site too, or it keeps serving the cached listing.
   if (propertyId && (status === 'active' || wasActive)) {
-    await fireMarketingRevalidation(supabase, {
+    await fireMarketingRevalidation({
       event: data.id ? 'update' : 'publish',
       table: 'properties',
       record_id: propertyId,

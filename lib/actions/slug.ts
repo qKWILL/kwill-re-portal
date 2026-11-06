@@ -65,7 +65,7 @@ export async function renamePropertySlug(
   updateTag(TAGS.property(propertyId))
   revalidatePath('/properties', 'layout')
 
-  await fireMarketingRevalidation(supabase, {
+  await fireMarketingRevalidation({
     event: 'update',
     table: 'properties',
     record_id: propertyId,

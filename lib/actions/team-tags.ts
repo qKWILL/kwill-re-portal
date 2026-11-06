@@ -2,7 +2,6 @@
 
 import { updateTag } from 'next/cache'
 import { z } from 'zod'
-import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getPortalSession } from '@/lib/auth'
 import { fireMarketingRevalidation } from '@/lib/webhook'
@@ -66,6 +65,16 @@ export async function createTeamTag(input: {
   }
 
   updateTag(TAGS.team)
+  // A tag created hidden changes nothing on the site; one created visible adds
+  // a /team tab.
+  if (showOnSite) {
+    await fireMarketingRevalidation({
+      event: 'create',
+      table: 'team_members',
+      record_id: name,
+      path: '/team',
+    })
+  }
   return { success: true, name }
 }
 
@@ -95,7 +104,7 @@ export async function setTeamTagVisibility(input: {
   if (error) return { success: false, error: error.message }
 
   updateTag(TAGS.team)
-  await fireMarketingRevalidation(await createClient(), {
+  await fireMarketingRevalidation({
     event: 'update',
     table: 'team_members',
     record_id: name,
