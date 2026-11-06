@@ -5,8 +5,14 @@ import { revalidatePath, updateTag } from 'next/cache'
 import { TAGS } from '@/lib/cache-tags'
 import { getPortalSession } from '@/lib/auth'
 import { fireMarketingRevalidation } from '@/lib/webhook'
+import { recordOldSlug, slugToReplacePlaceholder } from '@/lib/property-slug'
 
-export async function updatePropertyStatus(propertyId: string, status: string) {
+export type UpdatePropertyStatusResult = { error: string | null }
+
+export async function updatePropertyStatus(
+  propertyId: string,
+  status: string,
+): Promise<UpdatePropertyStatusResult> {
   const supabase = await createClient()
   const { user, isAdmin } = await getPortalSession()
 
@@ -16,15 +22,27 @@ export async function updatePropertyStatus(propertyId: string, status: string) {
     .eq('id', propertyId)
     .single()
 
-  if (!before) return
-  if (!isAdmin && before.created_by !== user.id) return
+  if (!before) return { error: 'Property not found.' }
+  if (!isAdmin && before.created_by !== user.id) return { error: 'Not authorized.' }
+
+  // A listing created by an early photo upload has no title until its first
+  // save. Publishing it from here would put an untitled page on the site.
+  const title = typeof before.title === 'string' ? before.title : ''
+  if (status !== 'draft' && !title.trim()) {
+    return { error: 'Add a title and save the listing before publishing.' }
+  }
+
+  const realSlug = await slugToReplacePlaceholder(supabase, before.slug, title)
+  const oldSlug = realSlug ? ((before.slug as string | null) ?? null) : null
+  const slug = realSlug ?? ((before.slug as string | null) ?? null)
 
   const { error } = await supabase
     .from('properties')
-    .update({ status })
+    .update(realSlug ? { status, slug: realSlug } : { status })
     .eq('id', propertyId)
 
   if (!error) {
+    if (oldSlug) await recordOldSlug(propertyId, oldSlug)
     const { data: after } = await supabase.from('properties').select('*').eq('id', propertyId).single()
     await supabase.from('audit_log').insert({
       table_name: 'properties',
@@ -38,12 +56,13 @@ export async function updatePropertyStatus(propertyId: string, status: string) {
     // Fire webhook if publishing or unpublishing. Sending the slug lets the
     // marketing site invalidate its slug-keyed detail-page cache; without it
     // only the listing tag refreshes.
-    if (status === 'active' || before?.status === 'active') {
+    if (status === 'active' || before.status === 'active') {
       await fireMarketingRevalidation(supabase, {
         event: 'status_change',
         table: 'properties',
         record_id: propertyId,
-        slug: (before?.slug as string | null) ?? null,
+        slug,
+        old_slug: oldSlug,
         path: '/properties',
       })
     }
@@ -51,8 +70,10 @@ export async function updatePropertyStatus(propertyId: string, status: string) {
 
   updateTag(TAGS.properties)
   updateTag(TAGS.property(propertyId))
-  if (before?.created_by) {
+  if (before.created_by) {
     updateTag(TAGS.userDashboard(before.created_by))
   }
   revalidatePath(`/properties/${propertyId}`)
+
+  return { error: error ? error.message : null }
 }

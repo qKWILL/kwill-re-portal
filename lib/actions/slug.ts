@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getPortalSession } from '@/lib/auth'
 import { TAGS } from '@/lib/cache-tags'
 import { fireMarketingRevalidation } from '@/lib/webhook'
+import { recordOldSlug } from '@/lib/property-slug'
 
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
@@ -58,11 +59,7 @@ export async function renamePropertySlug(
     .eq('id', propertyId)
   if (updateError) return { success: false, error: updateError.message }
 
-  if (oldSlug) {
-    await supabase
-      .from('property_slug_history')
-      .insert({ property_id: propertyId, old_slug: oldSlug })
-  }
+  if (oldSlug) await recordOldSlug(propertyId, oldSlug)
 
   updateTag(TAGS.properties)
   updateTag(TAGS.property(propertyId))
